@@ -348,3 +348,74 @@ npm run db:seed
 ```
 
 Перед повторным заполнением seed очищает старые демо-данные, чтобы не создавать дубликаты.
+
+---
+
+## 21. Products API
+
+Модуль Products реализован по слоистой архитектуре.
+
+```txt
+GET /api/products
+  ↓
+product.routes.ts
+  ↓
+ProductController
+  ↓
+ProductService
+  ↓
+ProductRepository
+  ↓
+Prisma Client
+  ↓
+PostgreSQL
+```
+
+---
+
+## 22. Структура Products Module
+
+| Файл | Назначение |
+|---|---|
+| `src/routes/product.routes.ts` | HTTP-маршруты товаров |
+| `src/controllers/ProductController.ts` | Приём HTTP-запросов и формирование HTTP-ответов |
+| `src/services/ProductService.ts` | Бизнес-логика товаров |
+| `src/repositories/ProductRepository.ts` | Запросы к PostgreSQL через Prisma |
+| `src/dto/ProductDto.ts` | Типы входных и выходных данных |
+| `tests/products.test.ts` | Интеграционные тесты Products API |
+
+---
+
+## 23. Endpoints Products API
+
+| Метод | URL | Назначение |
+|---|---|---|
+| `GET` | `/api/products` | Получить список товаров |
+| `GET` | `/api/products?search=лампа` | Поиск товаров по названию |
+| `GET` | `/api/products?isActive=true` | Фильтр активных товаров |
+| `GET` | `/api/products/:id` | Получить товар по id |
+
+---
+
+## 24. Ответственность слоёв Products API
+
+| Слой | Ответственность |
+|---|---|
+| Route | Описывает URL и HTTP-метод |
+| Controller | Читает query params и path params |
+| Service | Преобразует данные в формат API |
+| Repository | Выполняет Prisma-запросы |
+| Database | Хранит товары и связи с маркетплейсами |
+
+---
+
+## 25. Тестирование Products API
+
+Для Products API написаны интеграционные тесты.
+
+| Тест | Что проверяет |
+|---|---|
+| `should return products list` | API возвращает список товаров |
+| `should filter products by search query` | Поиск по названию работает |
+| `should return product by id` | Можно получить один товар |
+| `should return 404 for missing product` | Для несуществующего товара возвращается 404 |
