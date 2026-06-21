@@ -811,3 +811,67 @@ bcrypt.compare(password, passwordHash)
 | `should not login with wrong password` | Неверный пароль отклоняется |
 | `should return current user by token` | `/me` работает с токеном |
 | `should reject /me without token` | `/me` без токена возвращает 401 |
+
+
+---
+
+## 52. Frontend
+
+Frontend реализован на React + Vite + TypeScript.
+
+```txt
+apps/frontend/src/
+  api/
+  components/
+  layout/
+  pages/
+  styles/
+  types/
+  utils/
+```
+
+---
+
+## 53. Frontend-архитектура
+
+| Слой | Назначение |
+|---|---|
+| `api` | Функции запросов к backend |
+| `components` | Переиспользуемые UI-компоненты |
+| `layout` | Общая структура интерфейса |
+| `pages` | Страницы приложения |
+| `types` | TypeScript-типы данных |
+| `styles` | Глобальные стили |
+
+---
+
+## 54. Frontend API Layer
+
+Frontend не вызывает `fetch` напрямую внутри всех компонентов.  
+Запросы вынесены в отдельный слой:
+
+| Файл | Назначение |
+|---|---|
+| `api/client.ts` | Общие функции `GET`, `POST`, `PATCH` |
+| `api/productsApi.ts` | Запросы Products API |
+| `api/analyticsApi.ts` | Запросы Analytics API |
+| `api/reviewsApi.ts` | Запросы Reviews API |
+| `api/aiApi.ts` | Запросы AI Assistant API |
+
+---
+
+## 55. Dashboard Page
+
+Dashboard page получает данные из backend endpoint:
+
+```txt
+GET /api/analytics/dashboard
+```
+
+и отображает:
+
+| Блок | Данные |
+|---|---|
+| Summary cards | Выручка, заказы, товары, рейтинг, конверсия |
+| Low stock table | Товары с низким остатком |
+| Top products table | Топ товаров по выручке |

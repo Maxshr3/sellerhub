@@ -1,0 +1,17 @@
+.page-section {
+  margin-bottom: 28px;
+}
+
+.page-section__header {
+  margin-bottom: 16px;
+}
+
+.page-section__header h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.page-section__header p {
+  margin: 6px 0 0;
+  color: #64748b;
+}

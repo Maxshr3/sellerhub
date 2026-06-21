@@ -271,3 +271,70 @@ http://localhost:5000/api/health
 | Reviews API | Done |
 | AI Assistant API | Done |
 | Integration tests | Done |
+
+
+---
+
+# Frontend
+
+Frontend находится в папке:
+
+```txt
+apps/frontend
+```
+
+## Frontend commands
+
+| Команда | Назначение |
+|---|---|
+| `npm install` | Установить зависимости |
+| `npm run dev` | Запустить frontend |
+| `npm run build` | Собрать frontend |
+| `npm run preview` | Предпросмотр production-сборки |
+
+## Frontend quick start
+
+```bash
+cd apps/frontend
+npm install
+npm run dev
+```
+
+Frontend запускается на:
+
+```txt
+http://localhost:5173
+```
+
+Backend должен быть запущен на:
+
+```txt
+http://localhost:5000
+```
+
+## Frontend environment
+
+Файл:
+
+```txt
+apps/frontend/.env
+```
+
+Пример:
+
+```env
+VITE_API_BASE_URL=http://localhost:5000/api
+```
+
+## Реализованные frontend-части
+
+| Часть | Статус |
+|---|---|
+| React + Vite + TypeScript | Done |
+| Layout | Done |
+| Sidebar navigation | Done |
+| API layer | Done |
+| Dashboard page | Done |
+| Products page | In progress |
+| Reviews page | In progress |
+| AI Assistant page | In progress |
