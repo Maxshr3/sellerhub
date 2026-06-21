@@ -315,3 +315,36 @@ Prisma query SELECT 1
   ↓
 PostgreSQL
 ```
+
+---
+
+## 20. Seed-данные
+
+Для локальной разработки используется seed-скрипт:
+
+```txt
+apps/backend/prisma/seed.ts
+```
+
+Seed-скрипт создаёт демонстрационные данные:
+
+| Сущность | Количество |
+|---|---:|
+| User | 1 |
+| Marketplace | 1 |
+| Product | 3 |
+| Order | 4 |
+| Review | 3 |
+| ProductAnalytics | 3 |
+| AIRecommendation | 3 |
+| AIAssistantLog | 2 |
+
+Seed нужен для того, чтобы после запуска проекта backend и frontend могли работать с готовыми демонстрационными данными.
+
+Команда запуска:
+
+```bash
+npm run db:seed
+```
+
+Перед повторным заполнением seed очищает старые демо-данные, чтобы не создавать дубликаты.
