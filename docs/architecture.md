@@ -21,3 +21,8 @@ Controllers / API / CLI interface
 ## Dependency rule
 Outer layers depend on inner layers, NOT vice versa.
 
+## Domain model concept
+
+User
+ ├── Email (Value Object)
+ ├── Password (Value Object)
