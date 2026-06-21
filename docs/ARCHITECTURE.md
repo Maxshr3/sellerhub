@@ -419,3 +419,75 @@ PostgreSQL
 | `should filter products by search query` | Поиск по названию работает |
 | `should return product by id` | Можно получить один товар |
 | `should return 404 for missing product` | Для несуществующего товара возвращается 404 |
+
+---
+
+## 26. Analytics API
+
+Модуль Analytics реализует расчёт показателей для dashboard.
+
+```txt
+GET /api/analytics/dashboard
+  ↓
+analytics.routes.ts
+  ↓
+AnalyticsController
+  ↓
+AnalyticsService
+  ↓
+AnalyticsRepository
+  ↓
+Prisma Client
+  ↓
+PostgreSQL
+```
+
+---
+
+## 27. Структура Analytics Module
+
+| Файл | Назначение |
+|---|---|
+| `src/routes/analytics.routes.ts` | HTTP-маршруты аналитики |
+| `src/controllers/AnalyticsController.ts` | Приём HTTP-запросов и возврат аналитики |
+| `src/services/AnalyticsService.ts` | Расчёт и подготовка показателей dashboard |
+| `src/repositories/AnalyticsRepository.ts` | Агрегирующие запросы к PostgreSQL через Prisma |
+| `src/dto/AnalyticsDto.ts` | Типы данных для ответа API |
+| `tests/analytics.test.ts` | Интеграционный тест Analytics API |
+
+---
+
+## 28. Endpoint Analytics API
+
+| Метод | URL | Назначение |
+|---|---|---|
+| `GET` | `/api/analytics/dashboard` | Получить сводную аналитику для dashboard |
+
+---
+
+## 29. Метрики dashboard
+
+| Метрика | Описание |
+|---|---|
+| `totalRevenue` | Общая выручка по заказам |
+| `totalOrders` | Общее количество заказов |
+| `totalSoldItems` | Количество проданных единиц |
+| `totalProducts` | Количество товаров |
+| `activeProducts` | Количество активных товаров |
+| `lowStockProducts` | Количество товаров с остатком 10 или меньше |
+| `averageRating` | Средняя оценка по отзывам |
+| `totalViews` | Общее количество просмотров товаров |
+| `conversionRate` | Конверсия из просмотров в заказы |
+
+---
+
+## 30. Почему аналитика вынесена в отдельный модуль
+
+Analytics API не должен смешиваться с Products API, потому что он решает другую задачу.
+
+| Модуль | Ответственность |
+|---|---|
+| Products API | Получение и фильтрация товаров |
+| Analytics API | Расчёт показателей и dashboard-метрик |
+
+Такое разделение упрощает поддержку проекта и показывает модульную архитектуру.
