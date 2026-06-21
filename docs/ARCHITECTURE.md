@@ -84,3 +84,111 @@ Product 1 ─── * Review
 Product 1 ─── * Analytics
 Product 1 ─── * AIRecommendation
 User 1 ─── * AIAssistantLog
+
+---
+
+## 9. Backend-структура проекта
+
+```txt
+apps/backend/src/
+  config/
+  controllers/
+  database/
+  dto/
+  middlewares/
+  repositories/
+  routes/
+  services/
+  utils/
+  app.ts
+  main.ts
+```
+
+| Папка | Назначение |
+|---|---|
+| `config` | Конфигурация приложения и переменные окружения |
+| `controllers` | Обработка HTTP-запросов |
+| `services` | Бизнес-логика приложения |
+| `repositories` | Работа с базой данных |
+| `routes` | Описание API-маршрутов |
+| `middlewares` | Промежуточная обработка запросов |
+| `database` | Подключение к базе данных |
+| `dto` | Описание входных и выходных данных |
+| `utils` | Вспомогательные функции |
+
+---
+
+## 10. Принцип разделения ответственности на backend
+
+```txt
+Request
+  ↓
+Route
+  ↓
+Controller
+  ↓
+Service
+  ↓
+Repository
+  ↓
+Database
+```
+
+| Слой | Ответственность |
+|---|---|
+| Route | Направляет запрос в нужный controller |
+| Controller | Получает HTTP-запрос и возвращает HTTP-ответ |
+| Service | Выполняет бизнес-логику |
+| Repository | Получает и сохраняет данные |
+| Database | Хранит данные |
+
+---
+
+## 11. Пример работы endpoint `/api/health`
+
+```txt
+GET /api/health
+  ↓
+health.routes.ts
+  ↓
+HealthController.getHealth()
+  ↓
+HealthService.getStatus()
+  ↓
+JSON response
+```
+
+Endpoint `/api/health` используется для проверки работоспособности backend-сервера.
+
+---
+
+## 12. TypeScript-конфигурация backend
+
+В backend используются два TypeScript-конфига.
+
+| Файл | Назначение |
+|---|---|
+| `tsconfig.json` | Основная конфигурация для разработки и тестов |
+| `tsconfig.build.json` | Конфигурация production-сборки |
+| `tests` | Используются только для проверки кода |
+| `dist` | Скомпилированный JavaScript-код для запуска |
+
+Разделение нужно для того, чтобы тестовые файлы не попадали в production-сборку.
+
+```txt
+Development:
+src + tests
+  ↓
+tsconfig.json
+  ↓
+npm test
+
+Production build:
+src
+  ↓
+tsconfig.build.json
+  ↓
+dist
+  ↓
+npm start
+```
