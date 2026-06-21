@@ -1,4 +1,5 @@
 import { Router } from "express";
+import aiRoutes from "./ai.routes";
 import analyticsRoutes from "./analytics.routes";
 import healthRoutes from "./health.routes";
 import productRoutes from "./product.routes";
@@ -10,5 +11,6 @@ router.use("/", healthRoutes);
 router.use("/", productRoutes);
 router.use("/", analyticsRoutes);
 router.use("/", reviewRoutes);
+router.use("/", aiRoutes);
 
 export default router;
