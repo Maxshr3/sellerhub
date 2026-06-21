@@ -702,3 +702,112 @@ suggestedAnswer
 | `should return 400 when reviewId is missing` | Пустой `reviewId` отклоняется |
 | `should return mock chat response` | Chat endpoint возвращает mock-ответ |
 | `should return AI logs` | История AI-запросов возвращается |
+
+---
+
+## 45. Auth API
+
+Модуль Auth отвечает за регистрацию, вход пользователя и проверку JWT-токена.
+
+```txt
+POST /api/auth/register
+  ↓
+auth.routes.ts
+  ↓
+AuthController
+  ↓
+AuthService
+  ↓
+AuthRepository
+  ↓
+Prisma Client
+  ↓
+PostgreSQL
+```
+
+---
+
+## 46. Структура Auth Module
+
+| Файл | Назначение |
+|---|---|
+| `src/routes/auth.routes.ts` | HTTP-маршруты авторизации |
+| `src/controllers/AuthController.ts` | Регистрация, логин и получение текущего пользователя |
+| `src/services/AuthService.ts` | Хэширование пароля, проверка пароля, создание JWT |
+| `src/repositories/AuthRepository.ts` | Работа с пользователями через Prisma |
+| `src/dto/AuthDto.ts` | Типы входных и выходных данных |
+| `src/middlewares/auth.middleware.ts` | Проверка Authorization Bearer token |
+| `src/utils/jwt.ts` | Создание и проверка JWT |
+| `tests/auth.test.ts` | Интеграционные тесты Auth API |
+
+---
+
+## 47. Endpoints Auth API
+
+| Метод | URL | Назначение |
+|---|---|---|
+| `POST` | `/api/auth/register` | Регистрация пользователя |
+| `POST` | `/api/auth/login` | Вход пользователя |
+| `GET` | `/api/auth/me` | Получить текущего пользователя по JWT |
+
+---
+
+## 48. Безопасность Auth API
+
+| Механизм | Назначение |
+|---|---|
+| `bcrypt` | Хэширование пароля перед сохранением в БД |
+| `JWT` | Передача авторизованного состояния клиента |
+| `Authorization: Bearer` | Формат передачи токена |
+| `passwordHash` | Пароль не возвращается в API-ответах |
+
+---
+
+## 49. Поток регистрации
+
+```txt
+POST /api/auth/register
+  ↓
+Проверка email/password/name
+  ↓
+Проверка уникальности email
+  ↓
+bcrypt.hash(password)
+  ↓
+Создание пользователя в PostgreSQL
+  ↓
+Создание JWT access token
+  ↓
+Ответ user + accessToken
+```
+
+---
+
+## 50. Поток логина
+
+```txt
+POST /api/auth/login
+  ↓
+Поиск пользователя по email
+  ↓
+bcrypt.compare(password, passwordHash)
+  ↓
+Создание JWT access token
+  ↓
+Ответ user + accessToken
+```
+
+---
+
+## 51. Тестирование Auth API
+
+Для Auth API написаны интеграционные тесты.
+
+| Тест | Что проверяет |
+|---|---|
+| `should register user` | Пользователь может зарегистрироваться |
+| `should not register duplicate email` | Нельзя зарегистрировать одинаковый email |
+| `should login user` | Пользователь может войти |
+| `should not login with wrong password` | Неверный пароль отклоняется |
+| `should return current user by token` | `/me` работает с токеном |
+| `should reject /me without token` | `/me` без токена возвращает 401 |
