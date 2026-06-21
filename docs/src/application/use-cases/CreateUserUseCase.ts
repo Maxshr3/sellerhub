@@ -1,6 +1,7 @@
 import { User, UserRole } from "../../domain/entities/User";
 import { Email } from "../../domain/value-objects/Email";
 import { Password } from "../../domain/value-objects/Password";
+import { v4 as uuid } from "uuid";
 
 export interface CreateUserDTO {
   email: string;
@@ -16,7 +17,7 @@ export class CreateUserUseCase {
     const password = new Password(dto.password);
 
     const user = new User(
-      crypto.randomUUID(),
+      uuid(),
       email,
       password,
       dto.role,
