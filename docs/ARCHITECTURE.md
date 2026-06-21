@@ -491,3 +491,102 @@ Analytics API не должен смешиваться с Products API, пото
 | Analytics API | Расчёт показателей и dashboard-метрик |
 
 Такое разделение упрощает поддержку проекта и показывает модульную архитектуру.
+
+---
+
+## 31. Reviews API
+
+Модуль Reviews отвечает за работу с отзывами покупателей.
+
+```txt
+GET /api/reviews
+  ↓
+review.routes.ts
+  ↓
+ReviewController
+  ↓
+ReviewService
+  ↓
+ReviewRepository
+  ↓
+Prisma Client
+  ↓
+PostgreSQL
+```
+
+---
+
+## 32. Структура Reviews Module
+
+| Файл | Назначение |
+|---|---|
+| `src/routes/review.routes.ts` | HTTP-маршруты отзывов |
+| `src/controllers/ReviewController.ts` | Приём HTTP-запросов и возврат ответов |
+| `src/services/ReviewService.ts` | Бизнес-логика отзывов |
+| `src/repositories/ReviewRepository.ts` | Запросы к PostgreSQL через Prisma |
+| `src/dto/ReviewDto.ts` | Типы данных для отзывов |
+| `tests/reviews.test.ts` | Интеграционные тесты Reviews API |
+
+---
+
+## 33. Endpoints Reviews API
+
+| Метод | URL | Назначение |
+|---|---|---|
+| `GET` | `/api/reviews` | Получить список отзывов |
+| `GET` | `/api/reviews?status=NEW` | Получить отзывы по статусу |
+| `GET` | `/api/reviews/:id` | Получить один отзыв |
+| `PATCH` | `/api/reviews/:id/answer` | Ответить на отзыв |
+
+---
+
+## 34. Статусы отзывов
+
+| Статус | Значение |
+|---|---|
+| `NEW` | Новый отзыв, ещё без ответа |
+| `ANSWERED` | На отзыв уже дан ответ |
+| `ARCHIVED` | Отзыв скрыт из активной обработки |
+
+---
+
+## 35. Ответ на отзыв
+
+Endpoint `PATCH /api/reviews/:id/answer` принимает тело запроса:
+
+```json
+{
+  "answerText": "Спасибо за отзыв!"
+}
+```
+
+После ответа статус отзыва меняется на `ANSWERED`.
+
+---
+
+## 36. Валидация Reviews API
+
+В `ReviewController` проверяются входные данные:
+
+| Проверка | Поведение |
+|---|---|
+| Некорректный `status` | Возвращается `400 Bad Request` |
+| Пустой `answerText` | Возвращается `400 Bad Request` |
+| Несуществующий отзыв | Возвращается `404 Not Found` |
+| Корректный ответ на отзыв | Отзыв обновляется и получает статус `ANSWERED` |
+
+---
+
+## 37. Тестирование Reviews API
+
+Для Reviews API написаны интеграционные тесты.
+
+| Тест | Что проверяет |
+|---|---|
+| `should return reviews list` | API возвращает список отзывов |
+| `should filter reviews by status` | Фильтрация по статусу работает |
+| `should return 400 for invalid review status` | Некорректный статус отклоняется |
+| `should return review by id` | Можно получить один отзыв |
+| `should answer review` | Можно ответить на отзыв |
+| `should return 400 when answerText is empty` | Пустой ответ не принимается |
+| `should return 404 for missing review` | Несуществующий отзыв возвращает 404 |
