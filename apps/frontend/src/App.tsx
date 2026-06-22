@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AppLayout } from "./layout/AppLayout";
+import { AIAssistantPage } from "./pages/AIAssistantPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { ProductsPage } from "./pages/ProductsPage";
 import { ReviewsPage } from "./pages/ReviewsPage";
@@ -13,9 +14,7 @@ function App() {
       {currentPage === "dashboard" ? <DashboardPage /> : null}
       {currentPage === "products" ? <ProductsPage /> : null}
       {currentPage === "reviews" ? <ReviewsPage /> : null}
-      {currentPage === "ai" ? (
-        <p>AI Assistant Page будет добавлена следующим шагом.</p>
-      ) : null}
+      {currentPage === "ai" ? <AIAssistantPage /> : null}
     </AppLayout>
   );
 }

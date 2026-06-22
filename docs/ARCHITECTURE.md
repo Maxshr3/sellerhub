@@ -986,3 +986,67 @@ PATCH /api/reviews/:id/answer
 | Answer textarea | Поле ответа продавца |
 | Answer button | Сохранение ответа |
 | Success message | Подтверждение успешного ответа |
+
+---
+
+## 64. AI Assistant Page
+
+AI Assistant Page отображает mock-AI рекомендации из backend endpoint:
+
+```txt
+GET /api/ai/recommendations
+```
+
+и поддерживает фильтр по типу:
+
+```txt
+GET /api/ai/recommendations?type=SEO
+```
+
+Также страница позволяет отметить рекомендацию применённой:
+
+```txt
+PATCH /api/ai/recommendations/:id/apply
+```
+
+и отправить сообщение в mock-AI чат:
+
+```txt
+POST /api/ai/chat
+```
+
+---
+
+## 65. Структура AI Assistant Page
+
+| Файл | Назначение |
+|---|---|
+| `src/pages/AIAssistantPage.tsx` | Страница AI Assistant |
+| `src/pages/AIAssistantPage.css` | Стили страницы AI Assistant |
+| `src/api/aiApi.ts` | Запросы к AI Assistant API |
+| `src/types/ai.ts` | TypeScript-типы AI |
+
+---
+
+## 66. Возможности AI Assistant Page
+
+| Возможность | Описание |
+|---|---|
+| Список рекомендаций | Показывает AI-рекомендации из backend |
+| Фильтр по типу | `PRICE`, `STOCK`, `SEO`, `REVIEW_REPLY`, `GENERAL` |
+| Применение рекомендации | Меняет `isApplied` на `true` |
+| AI Chat | Отправляет prompt в backend |
+| Mock-AI response | Возвращает предсказуемый ответ без внешнего API |
+
+---
+
+## 67. Почему frontend работает с mock-AI
+
+Mock-AI позволяет демонстрировать AI-функциональность без внешних зависимостей.
+
+| Причина | Польза |
+|---|---|
+| Не нужен API-ключ | Проект проще проверить |
+| Ответы стабильные | Удобно для тестов и демонстрации |
+| Backend уже имеет AI-слой | Позже можно заменить mock на реальный AI |
+| Frontend не меняется | Можно заменить только backend service |

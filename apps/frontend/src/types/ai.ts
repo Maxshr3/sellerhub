@@ -30,6 +30,10 @@ export type AIRecommendationsResponse = {
   total: number;
 };
 
+export type AIRecommendationResponse = {
+  data: AIRecommendation;
+};
+
 export type ChatResponse = {
   data: {
     prompt: string;

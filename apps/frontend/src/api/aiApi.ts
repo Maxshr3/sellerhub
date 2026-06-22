@@ -1,5 +1,6 @@
 import { apiGet, apiPatch, apiPost } from "./client";
 import type {
+  AIRecommendationResponse,
   AIRecommendationsResponse,
   AIRecommendationType,
   ChatResponse,
@@ -12,7 +13,9 @@ export function getAIRecommendations(type?: AIRecommendationType) {
 }
 
 export function applyAIRecommendation(id: string) {
-  return apiPatch(`/ai/recommendations/${id}/apply`);
+  return apiPatch<AIRecommendationResponse, undefined>(
+    `/ai/recommendations/${id}/apply`,
+  );
 }
 
 export function sendAIChatMessage(prompt: string) {
