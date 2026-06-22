@@ -389,3 +389,114 @@ GET /reviews?status=NEW
   "message": "User with this email already exists"
 }
 ```
+
+---
+
+# 8. Marketplaces API
+
+## GET `/marketplaces/providers`
+
+Возвращает список маркетплейсов, которые можно подключить в SellerHUB.
+
+### Response 200
+
+```json
+{
+  "data": [
+    {
+      "type": "YANDEX_MARKET",
+      "title": "Яндекс Маркет",
+      "description": "Подключение магазина Яндекс Маркета...",
+      "isAvailableInDemo": true,
+      "authType": "API_KEY"
+    }
+  ],
+  "total": 3
+}
+```
+
+---
+
+## GET `/marketplaces/connections`
+
+Возвращает подключённые маркетплейсы пользователя.
+
+### Response 200
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "name": "Demo Ozon Store",
+      "type": "OZON",
+      "externalAccountId": null,
+      "status": "CONNECTED",
+      "syncMode": "MOCK",
+      "lastSyncAt": null,
+      "hasApiKey": false,
+      "createdAt": "...",
+      "updatedAt": "..."
+    }
+  ],
+  "total": 1
+}
+```
+
+---
+
+## POST `/marketplaces/connections`
+
+Создаёт подключение маркетплейса.
+
+### Request body
+
+```json
+{
+  "name": "Мой Яндекс Маркет",
+  "type": "YANDEX_MARKET",
+  "externalAccountId": "YANDEX-DEMO-001",
+  "apiKey": "demo-api-key",
+  "syncMode": "MOCK"
+}
+```
+
+### Response 201
+
+```json
+{
+  "data": {
+    "id": "uuid",
+    "name": "Мой Яндекс Маркет",
+    "type": "YANDEX_MARKET",
+    "status": "CONNECTED",
+    "syncMode": "MOCK",
+    "hasApiKey": true
+  }
+}
+```
+
+---
+
+## PATCH `/marketplaces/connections/:id/status`
+
+Меняет статус подключения.
+
+### Request body
+
+```json
+{
+  "status": "DISCONNECTED"
+}
+```
+
+### Response 200
+
+```json
+{
+  "data": {
+    "id": "uuid",
+    "status": "DISCONNECTED"
+  }
+}
+```

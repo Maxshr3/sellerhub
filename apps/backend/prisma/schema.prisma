@@ -17,6 +17,17 @@ enum MarketplaceType {
   OTHER
 }
 
+enum MarketplaceConnectionStatus {
+  CONNECTED
+  DISCONNECTED
+  NEEDS_ATTENTION
+}
+
+enum MarketplaceSyncMode {
+  MOCK
+  API
+}
+
 enum OrderStatus {
   NEW
   PAID
@@ -55,17 +66,21 @@ model User {
 }
 
 model Marketplace {
-  id        String          @id @default(uuid())
-  name      String
-  type      MarketplaceType
-  apiKey    String?
-  userId    String
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  id                String                      @id @default(uuid())
+  name              String
+  type              MarketplaceType
+  apiKey            String?
+  externalAccountId String?
+  status            MarketplaceConnectionStatus @default(CONNECTED)
+  syncMode          MarketplaceSyncMode         @default(MOCK)
+  lastSyncAt        DateTime?
+  userId            String
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  products Product[]
-  orders   Order[]
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  products  Product[]
+  orders    Order[]
 
   @@map("marketplaces")
 }
