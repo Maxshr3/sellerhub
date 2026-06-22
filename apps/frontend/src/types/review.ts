@@ -23,3 +23,7 @@ export type ReviewsResponse = {
   data: Review[];
   total: number;
 };
+
+export type ReviewResponse = {
+  data: Review;
+};

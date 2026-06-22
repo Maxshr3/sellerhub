@@ -928,3 +928,61 @@ GET /api/products?search=лампа
 | Reset button | Сбрасывает поиск |
 | Low stock badge | Подсвечивает товары с остатком 10 или меньше |
 | Status badge | Показывает активность товара |
+
+---
+
+## 60. Reviews Page
+
+Reviews Page отображает отзывы покупателей из backend endpoint:
+
+```txt
+GET /api/reviews
+```
+
+и поддерживает фильтр по статусу:
+
+```txt
+GET /api/reviews?status=NEW
+```
+
+Также страница позволяет ответить на отзыв:
+
+```txt
+PATCH /api/reviews/:id/answer
+```
+
+---
+
+## 61. Структура Reviews Page
+
+| Файл | Назначение |
+|---|---|
+| `src/pages/ReviewsPage.tsx` | Страница отзывов |
+| `src/pages/ReviewsPage.css` | Стили страницы отзывов |
+| `src/api/reviewsApi.ts` | Запросы к Reviews API |
+| `src/types/review.ts` | TypeScript-типы отзывов |
+
+---
+
+## 62. Возможности Reviews Page
+
+| Возможность | Описание |
+|---|---|
+| Список отзывов | Показывает отзывы покупателей |
+| Фильтр по статусу | `NEW`, `ANSWERED`, `ARCHIVED` |
+| Отображение товара | Название товара, SKU, маркетплейс |
+| Отображение оценки | Рейтинг отзыва от 1 до 5 |
+| Ответ на отзыв | Отправляет ответ в backend |
+| Статус ответа | После ответа отзыв становится `ANSWERED` |
+
+---
+
+## 63. UX Reviews Page
+
+| Элемент | Назначение |
+|---|---|
+| Status select | Фильтрация отзывов |
+| Review card | Карточка одного отзыва |
+| Answer textarea | Поле ответа продавца |
+| Answer button | Сохранение ответа |
+| Success message | Подтверждение успешного ответа |

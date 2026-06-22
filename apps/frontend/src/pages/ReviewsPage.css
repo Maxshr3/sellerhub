@@ -1,0 +1,142 @@
+.reviews-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 18px;
+}
+
+.reviews-filter {
+  display: grid;
+  gap: 6px;
+}
+
+.reviews-filter span {
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.reviews-filter select {
+  min-width: 220px;
+  padding: 12px 14px;
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  background: #ffffff;
+  outline: none;
+}
+
+.reviews-filter select:focus {
+  border-color: #38bdf8;
+}
+
+.reviews-list {
+  display: grid;
+  gap: 16px;
+}
+
+.review-card {
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 10px 30px rgb(15 23 42 / 6%);
+}
+
+.review-card__header {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: start;
+}
+
+.review-card__header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.review-card__header p {
+  margin: 6px 0 0;
+  color: #64748b;
+}
+
+.review-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.review-card__text {
+  margin: 16px 0;
+  line-height: 1.6;
+}
+
+.review-status {
+  display: inline-flex;
+  padding: 7px 11px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.review-status--new {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.review-status--answered {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.review-status--archived {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.review-answer {
+  padding: 14px;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.review-answer strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.review-answer p {
+  margin: 0;
+  color: #334155;
+  line-height: 1.6;
+}
+
+.review-answer-form {
+  display: grid;
+  gap: 12px;
+}
+
+.review-answer-form textarea {
+  min-height: 100px;
+  padding: 12px 14px;
+  border: 1px solid #dbe3ef;
+  border-radius: 14px;
+  resize: vertical;
+  outline: none;
+}
+
+.review-answer-form textarea:focus {
+  border-color: #38bdf8;
+}
+
+.review-answer-form button {
+  justify-self: start;
+}
+
+.success-text {
+  color: #047857;
+  font-weight: 700;
+}

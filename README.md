@@ -336,5 +336,5 @@ VITE_API_BASE_URL=http://localhost:5000/api
 | API layer | Done |
 | Dashboard page | Done |
 | Products page | Done |
-| Reviews page | In progress |
+| Reviews page | Done |
 | AI Assistant page | In progress |
