@@ -16,5 +16,9 @@ router.patch(
   "/marketplaces/connections/:id/status",
   marketplaceController.updateConnectionStatus,
 );
+router.post(
+  "/marketplaces/connections/:id/sync",
+  marketplaceController.syncConnection,
+);
 
 export default router;

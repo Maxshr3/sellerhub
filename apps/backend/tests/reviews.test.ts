@@ -6,7 +6,35 @@ import { prisma } from "../src/database/prisma";
 describe("Reviews API", () => {
   const app = createApp();
 
+  let testReviewId = "";
+
   beforeAll(async () => {
+    await prisma.review.deleteMany({
+      where: {
+        product: {
+          sku: "REVIEWS-TEST-001",
+        },
+      },
+    });
+
+    await prisma.product.deleteMany({
+      where: {
+        sku: "REVIEWS-TEST-001",
+      },
+    });
+
+    await prisma.marketplace.deleteMany({
+      where: {
+        name: "Reviews Test Marketplace",
+      },
+    });
+
+    await prisma.user.deleteMany({
+      where: {
+        email: "reviews-test@sellerhub.ru",
+      },
+    });
+
     const user = await prisma.user.create({
       data: {
         email: "reviews-test@sellerhub.ru",
@@ -35,7 +63,7 @@ describe("Reviews API", () => {
       },
     });
 
-    await prisma.review.create({
+    const review = await prisma.review.create({
       data: {
         productId: product.id,
         authorName: "Reviews Tester",
@@ -44,6 +72,8 @@ describe("Reviews API", () => {
         status: "NEW",
       },
     });
+
+    testReviewId = review.id;
   });
 
   afterAll(async () => {
@@ -89,7 +119,12 @@ describe("Reviews API", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.data.length).toBeGreaterThanOrEqual(1);
-    expect(response.body.data[0].status).toBe("NEW");
+    expect(
+      response.body.data.some(
+        (review: { id: string; status: string }) =>
+          review.id === testReviewId && review.status === "NEW",
+      ),
+    ).toBe(true);
   });
 
   it("should return 400 for invalid review status", async () => {
@@ -100,33 +135,22 @@ describe("Reviews API", () => {
   });
 
   it("should return review by id", async () => {
-    const reviewsResponse = await request(app).get(
-      "/api/reviews?status=NEW",
-    );
-
-    const reviewId = reviewsResponse.body.data[0].id;
-
-    const response = await request(app).get(`/api/reviews/${reviewId}`);
+    const response = await request(app).get(`/api/reviews/${testReviewId}`);
 
     expect(response.status).toBe(200);
-    expect(response.body.data.id).toBe(reviewId);
+    expect(response.body.data.id).toBe(testReviewId);
+    expect(response.body.data.text).toBe("Тестовый отзыв для Reviews API");
   });
 
   it("should answer review", async () => {
-    const reviewsResponse = await request(app).get(
-      "/api/reviews?status=NEW",
-    );
-
-    const reviewId = reviewsResponse.body.data[0].id;
-
     const response = await request(app)
-      .patch(`/api/reviews/${reviewId}/answer`)
+      .patch(`/api/reviews/${testReviewId}/answer`)
       .send({
         answerText: "Спасибо за отзыв! Мы рады, что товар вам понравился.",
       });
 
     expect(response.status).toBe(200);
-    expect(response.body.data.id).toBe(reviewId);
+    expect(response.body.data.id).toBe(testReviewId);
     expect(response.body.data.status).toBe("ANSWERED");
     expect(response.body.data.answerText).toBe(
       "Спасибо за отзыв! Мы рады, что товар вам понравился.",
@@ -134,12 +158,8 @@ describe("Reviews API", () => {
   });
 
   it("should return 400 when answerText is empty", async () => {
-    const reviewsResponse = await request(app).get("/api/reviews");
-
-    const reviewId = reviewsResponse.body.data[0].id;
-
     const response = await request(app)
-      .patch(`/api/reviews/${reviewId}/answer`)
+      .patch(`/api/reviews/${testReviewId}/answer`)
       .send({
         answerText: "",
       });

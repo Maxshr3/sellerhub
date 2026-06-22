@@ -44,3 +44,17 @@ export type CreateMarketplaceConnectionRequestDto = {
 export type UpdateMarketplaceStatusRequestDto = {
   status: MarketplaceConnectionStatusDto;
 };
+
+export type MarketplaceSyncResultDto = {
+  connection: MarketplaceConnectionResponseDto;
+  source: MarketplaceTypeDto;
+  syncMode: MarketplaceSyncModeDto;
+  imported: {
+    products: number;
+    orders: number;
+    reviews: number;
+    analyticsRecords: number;
+    recommendations: number;
+  };
+  message: string;
+};

@@ -7,6 +7,52 @@ describe("Marketplaces API", () => {
   const app = createApp();
 
   beforeAll(async () => {
+    await prisma.aIRecommendation.deleteMany({
+      where: {
+        product: {
+          sku: {
+            in: ["YM-LAMP-PRO-001", "YM-CHARGE-STAND-002", "YM-DESK-HUB-003"],
+          },
+        },
+      },
+    });
+
+    await prisma.productAnalytics.deleteMany({
+      where: {
+        product: {
+          sku: {
+            in: ["YM-LAMP-PRO-001", "YM-CHARGE-STAND-002", "YM-DESK-HUB-003"],
+          },
+        },
+      },
+    });
+
+    await prisma.review.deleteMany({
+      where: {
+        product: {
+          sku: {
+            in: ["YM-LAMP-PRO-001", "YM-CHARGE-STAND-002", "YM-DESK-HUB-003"],
+          },
+        },
+      },
+    });
+
+    await prisma.order.deleteMany({
+      where: {
+        marketplace: {
+          name: "Test Yandex Market",
+        },
+      },
+    });
+
+    await prisma.product.deleteMany({
+      where: {
+        sku: {
+          in: ["YM-LAMP-PRO-001", "YM-CHARGE-STAND-002", "YM-DESK-HUB-003"],
+        },
+      },
+    });
+
     await prisma.marketplace.deleteMany({
       where: {
         name: {
@@ -29,6 +75,54 @@ describe("Marketplaces API", () => {
   });
 
   afterAll(async () => {
+    await prisma.aIRecommendation.deleteMany({
+      where: {
+        product: {
+          sku: {
+            in: ["YM-LAMP-PRO-001", "YM-CHARGE-STAND-002", "YM-DESK-HUB-003"],
+          },
+        },
+      },
+    });
+
+    await prisma.productAnalytics.deleteMany({
+      where: {
+        product: {
+          sku: {
+            in: ["YM-LAMP-PRO-001", "YM-CHARGE-STAND-002", "YM-DESK-HUB-003"],
+          },
+        },
+      },
+    });
+
+    await prisma.review.deleteMany({
+      where: {
+        product: {
+          sku: {
+            in: ["YM-LAMP-PRO-001", "YM-CHARGE-STAND-002", "YM-DESK-HUB-003"],
+          },
+        },
+      },
+    });
+
+    await prisma.order.deleteMany({
+      where: {
+        marketplace: {
+          name: {
+            in: ["Test Yandex Market", "Test Wildberries"],
+          },
+        },
+      },
+    });
+
+    await prisma.product.deleteMany({
+      where: {
+        sku: {
+          in: ["YM-LAMP-PRO-001", "YM-CHARGE-STAND-002", "YM-DESK-HUB-003"],
+        },
+      },
+    });
+
     await prisma.marketplace.deleteMany({
       where: {
         name: {
@@ -51,9 +145,19 @@ describe("Marketplaces API", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.total).toBeGreaterThanOrEqual(3);
-    expect(response.body.data.some((item: { type: string }) => item.type === "YANDEX_MARKET")).toBe(true);
-    expect(response.body.data.some((item: { type: string }) => item.type === "WILDBERRIES")).toBe(true);
-    expect(response.body.data.some((item: { type: string }) => item.type === "AVITO")).toBe(true);
+    expect(
+      response.body.data.some(
+        (item: { type: string }) => item.type === "YANDEX_MARKET",
+      ),
+    ).toBe(true);
+    expect(
+      response.body.data.some(
+        (item: { type: string }) => item.type === "WILDBERRIES",
+      ),
+    ).toBe(true);
+    expect(
+      response.body.data.some((item: { type: string }) => item.type === "AVITO"),
+    ).toBe(true);
   });
 
   it("should create marketplace connection", async () => {
@@ -73,6 +177,32 @@ describe("Marketplaces API", () => {
     expect(response.body.data.hasApiKey).toBe(true);
     expect(response.body.data.syncMode).toBe("MOCK");
     expect(response.body.data.status).toBe("CONNECTED");
+  });
+
+  it("should sync marketplace connection with mock data", async () => {
+    const createResponse = await request(app)
+      .post("/api/marketplaces/connections")
+      .send({
+        name: "Test Yandex Market",
+        type: "YANDEX_MARKET",
+        externalAccountId: "YANDEX-DEMO-001",
+        apiKey: "demo-api-key",
+        syncMode: "MOCK",
+      });
+
+    const connectionId = createResponse.body.data.id;
+
+    const response = await request(app).post(
+      `/api/marketplaces/connections/${connectionId}/sync`,
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.imported.products).toBe(3);
+    expect(response.body.data.imported.orders).toBe(3);
+    expect(response.body.data.imported.reviews).toBe(2);
+    expect(response.body.data.imported.analyticsRecords).toBe(3);
+    expect(response.body.data.imported.recommendations).toBe(2);
+    expect(response.body.data.connection.lastSyncAt).toBeDefined();
   });
 
   it("should return marketplace connections", async () => {

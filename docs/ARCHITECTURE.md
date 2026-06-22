@@ -1117,3 +1117,99 @@ Real API / Mock data
 | `src/repositories/MarketplaceRepository.ts` | Работа с PostgreSQL через Prisma |
 | `src/dto/MarketplaceDto.ts` | Типы входных и выходных данных |
 | `tests/marketplaces.test.ts` | Интеграционные тесты |
+
+---
+
+## 72. Marketplace Sync Engine
+
+Marketplace Sync Engine отвечает за загрузку данных из маркетплейсов.
+
+В demo-версии используются mock-коннекторы:
+
+| Коннектор | Маркетплейс |
+|---|---|
+| `YandexMarketMockConnector` | Яндекс Маркет |
+| `WildberriesMockConnector` | Wildberries |
+| `AvitoMockConnector` | Avito |
+
+---
+
+## 73. Sync flow
+
+```txt
+POST /api/marketplaces/connections/:id/sync
+  ↓
+MarketplaceController.syncConnection()
+  ↓
+MarketplaceService.syncConnection()
+  ↓
+MarketplaceConnectorFactory
+  ↓
+YandexMarketMockConnector / WildberriesMockConnector / AvitoMockConnector
+  ↓
+NormalizedMarketplaceSyncData
+  ↓
+MarketplaceRepository
+  ↓
+PostgreSQL
+```
+
+---
+
+## 74. Почему используется normalized data
+
+Реальные API маркетплейсов возвращают данные в разных форматах.
+
+Чтобы не привязывать бизнес-логику SellerHUB к конкретному API, используется промежуточный формат:
+
+```txt
+Marketplace API data
+  ↓
+Connector
+  ↓
+NormalizedMarketplaceSyncData
+  ↓
+SellerHUB database
+```
+
+Так позже можно заменить mock-коннектор на реальный API-коннектор без переписывания всей системы.
+
+---
+
+## 75. Какие данные импортируются
+
+| Данные | Таблица |
+|---|---|
+| Товары | `products` |
+| Заказы | `orders` |
+| Отзывы | `reviews` |
+| Аналитика | `product_analytics` |
+| AI-рекомендации | `ai_recommendations` |
+
+---
+
+## 76. Advanced Analytics KPI
+
+Dashboard теперь возвращает расширенные KPI с подсказками.
+
+Каждый KPI содержит:
+
+| Поле | Значение |
+|---|---|
+| `label` | Название показателя |
+| `value` | Значение |
+| `description` | Что показывает |
+| `formula` | Как считается |
+| `interpretation` | Как продавцу понимать показатель |
+
+---
+
+## 77. Примеры KPI
+
+| KPI | Формула |
+|---|---|
+| Средний чек | `выручка / количество заказов` |
+| Конверсия | `ordersCount / views × 100%` |
+| Процент выкупа | `доставленные / (доставленные + возвраты) × 100%` |
+| Доля возвратов | `returned orders / total orders × 100%` |
+| Запас в днях | `общий stock / средние продажи в день` |

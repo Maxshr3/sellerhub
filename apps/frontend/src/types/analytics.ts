@@ -10,6 +10,31 @@ export type AnalyticsSummary = {
   conversionRate: string;
 };
 
+export type AnalyticsKpiCard = {
+  id: string;
+  label: string;
+  value: string;
+  description: string;
+  formula: string;
+  interpretation: string;
+};
+
+export type MarketplaceRevenue = {
+  marketplaceId: string;
+  marketplaceName: string;
+  marketplaceType: string;
+  revenue: string;
+  ordersCount: number;
+};
+
+export type SalesFunnel = {
+  views: number;
+  orders: number;
+  deliveredOrders: number;
+  returnedOrders: number;
+  cancelledOrders: number;
+};
+
 export type AnalyticsProduct = {
   id: string;
   title: string;
@@ -29,6 +54,9 @@ export type TopProduct = AnalyticsProduct & {
 
 export type DashboardAnalytics = {
   summary: AnalyticsSummary;
+  kpiCards: AnalyticsKpiCard[];
+  marketplaceRevenue: MarketplaceRevenue[];
+  salesFunnel: SalesFunnel;
   lowStockProducts: AnalyticsProduct[];
   topProducts: TopProduct[];
 };

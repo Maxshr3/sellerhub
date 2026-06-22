@@ -115,6 +115,22 @@ export class MarketplaceController {
     });
   };
 
+  syncConnection = async (req: Request<MarketplaceParams>, res: Response) => {
+    const { id } = req.params;
+
+    const result = await this.marketplaceService.syncConnection(id);
+
+    if (!result) {
+      return res.status(404).json({
+        message: "Marketplace connection not found",
+      });
+    }
+
+    return res.status(200).json({
+      data: result,
+    });
+  };
+
   private parseMarketplaceType(value: unknown): MarketplaceTypeDto | null {
     if (value === "YANDEX_MARKET") {
       return "YANDEX_MARKET";

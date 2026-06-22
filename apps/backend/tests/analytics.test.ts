@@ -119,6 +119,12 @@ describe("Analytics API", () => {
     expect(response.status).toBe(200);
     expect(response.body.data.summary).toBeDefined();
     expect(response.body.data.summary.totalRevenue).toBeDefined();
+    expect(Array.isArray(response.body.data.kpiCards)).toBe(true);
+    expect(response.body.data.kpiCards.length).toBeGreaterThanOrEqual(5);
+    expect(response.body.data.kpiCards[0].formula).toBeDefined();
+    expect(response.body.data.kpiCards[0].interpretation).toBeDefined();
+    expect(Array.isArray(response.body.data.marketplaceRevenue)).toBe(true);
+    expect(response.body.data.salesFunnel).toBeDefined();
     expect(response.body.data.summary.totalOrders).toBeGreaterThanOrEqual(1);
     expect(response.body.data.summary.totalProducts).toBeGreaterThanOrEqual(1);
     expect(response.body.data.summary.activeProducts).toBeGreaterThanOrEqual(1);

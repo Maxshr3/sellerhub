@@ -6,5 +6,6 @@ export default defineConfig({
     exclude: ["node_modules", "dist", "src/generated"],
     globals: false,
     environment: "node",
+    fileParallelism: false,
   },
 });

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { getDashboardAnalytics } from "../api/analyticsApi";
 import { PageSection } from "../components/PageSection";
-import { StatCard } from "../components/StatCard";
 import type { DashboardAnalytics } from "../types/analytics";
 import "./DashboardPage.css";
 
@@ -34,33 +33,87 @@ export function DashboardPage() {
   return (
     <>
       <PageSection
-        title="Общая аналитика"
-        description="Ключевые показатели магазина по demo-данным."
+        title="Продажные KPI"
+        description="Основные показатели, которые помогают селлеру понимать продажи, эффективность карточек и проблемы в ассортименте."
       >
-        <div className="stats-grid">
-          <StatCard
-            label="Выручка"
-            value={`${analytics.summary.totalRevenue} ₽`}
-            hint="По заказам"
-          />
-          <StatCard label="Заказы" value={analytics.summary.totalOrders} />
-          <StatCard
-            label="Продано единиц"
-            value={analytics.summary.totalSoldItems}
-          />
-          <StatCard
-            label="Товары"
-            value={analytics.summary.totalProducts}
-            hint={`${analytics.summary.activeProducts} активных`}
-          />
-          <StatCard
-            label="Средний рейтинг"
-            value={analytics.summary.averageRating ?? "—"}
-          />
-          <StatCard
-            label="Конверсия"
-            value={`${analytics.summary.conversionRate}%`}
-          />
+        <div className="kpi-grid">
+          {analytics.kpiCards.map((kpi) => (
+            <article className="kpi-card" key={kpi.id}>
+              <div className="kpi-card__top">
+                <p>{kpi.label}</p>
+                <span title={`${kpi.formula}. ${kpi.interpretation}`}>?</span>
+              </div>
+
+              <strong>{kpi.value}</strong>
+              <small>{kpi.description}</small>
+
+              <details>
+                <summary>Как считается</summary>
+                <p>
+                  <b>Формула:</b> {kpi.formula}
+                </p>
+                <p>
+                  <b>Как понимать:</b> {kpi.interpretation}
+                </p>
+              </details>
+            </article>
+          ))}
+        </div>
+      </PageSection>
+
+      <PageSection
+        title="Воронка продаж"
+        description="Показывает путь от просмотров до заказов, доставок, возвратов и отмен."
+      >
+        <div className="funnel-grid">
+          <div className="funnel-item">
+            <span>Просмотры</span>
+            <strong>{analytics.salesFunnel.views}</strong>
+          </div>
+          <div className="funnel-item">
+            <span>Заказы</span>
+            <strong>{analytics.salesFunnel.orders}</strong>
+          </div>
+          <div className="funnel-item">
+            <span>Доставлено</span>
+            <strong>{analytics.salesFunnel.deliveredOrders}</strong>
+          </div>
+          <div className="funnel-item">
+            <span>Возвраты</span>
+            <strong>{analytics.salesFunnel.returnedOrders}</strong>
+          </div>
+          <div className="funnel-item">
+            <span>Отмены</span>
+            <strong>{analytics.salesFunnel.cancelledOrders}</strong>
+          </div>
+        </div>
+      </PageSection>
+
+      <PageSection
+        title="Выручка по маркетплейсам"
+        description="Показывает, какие площадки дают больше всего денег."
+      >
+        <div className="table-card">
+          <table>
+            <thead>
+              <tr>
+                <th>Маркетплейс</th>
+                <th>Тип</th>
+                <th>Выручка</th>
+                <th>Заказы</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analytics.marketplaceRevenue.map((marketplace) => (
+                <tr key={marketplace.marketplaceId}>
+                  <td>{marketplace.marketplaceName}</td>
+                  <td>{marketplace.marketplaceType}</td>
+                  <td>{marketplace.revenue} ₽</td>
+                  <td>{marketplace.ordersCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </PageSection>
 

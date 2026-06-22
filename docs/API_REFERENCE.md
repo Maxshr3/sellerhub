@@ -500,3 +500,38 @@ GET /reviews?status=NEW
   }
 }
 ```
+
+---
+
+## POST `/marketplaces/connections/:id/sync`
+
+Запускает mock-синхронизацию подключённого маркетплейса.
+
+Во время синхронизации backend импортирует:
+
+| Данные | Куда сохраняются |
+|---|---|
+| Товары | `products` |
+| Заказы | `orders` |
+| Отзывы | `reviews` |
+| Аналитика | `product_analytics` |
+| AI-рекомендации | `ai_recommendations` |
+
+### Response 200
+
+```json
+{
+  "data": {
+    "source": "YANDEX_MARKET",
+    "syncMode": "MOCK",
+    "imported": {
+      "products": 3,
+      "orders": 3,
+      "reviews": 2,
+      "analyticsRecords": 3,
+      "recommendations": 2
+    },
+    "message": "Mock-синхронизация завершена. Данные маркетплейса импортированы в SellerHUB."
+  }
+}
+```
