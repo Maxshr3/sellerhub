@@ -875,3 +875,56 @@ GET /api/analytics/dashboard
 | Summary cards | Выручка, заказы, товары, рейтинг, конверсия |
 | Low stock table | Товары с низким остатком |
 | Top products table | Топ товаров по выручке |
+
+---
+
+## 56. Products Page
+
+Products Page отображает список товаров из backend endpoint:
+
+```txt
+GET /api/products
+```
+
+и поддерживает поиск:
+
+```txt
+GET /api/products?search=лампа
+```
+
+---
+
+## 57. Структура Products Page
+
+| Файл | Назначение |
+|---|---|
+| `src/pages/ProductsPage.tsx` | Страница товаров |
+| `src/pages/ProductsPage.css` | Стили страницы товаров |
+| `src/api/productsApi.ts` | Запросы к Products API |
+| `src/types/product.ts` | TypeScript-типы товаров |
+
+---
+
+## 58. Отображаемые данные товара
+
+| Поле | Описание |
+|---|---|
+| `title` | Название товара |
+| `sku` | Артикул |
+| `price` | Цена |
+| `stock` | Остаток |
+| `rating` | Рейтинг |
+| `marketplaceName` | Маркетплейс |
+| `isActive` | Статус активности товара |
+
+---
+
+## 59. UX Products Page
+
+| Элемент | Назначение |
+|---|---|
+| Search input | Поиск товара по названию |
+| Find button | Запускает поиск |
+| Reset button | Сбрасывает поиск |
+| Low stock badge | Подсвечивает товары с остатком 10 или меньше |
+| Status badge | Показывает активность товара |

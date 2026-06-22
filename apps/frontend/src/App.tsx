@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AppLayout } from "./layout/AppLayout";
 import { DashboardPage } from "./pages/DashboardPage";
+import { ProductsPage } from "./pages/ProductsPage";
 import "./styles/global.css";
 
 function App() {
@@ -9,8 +10,12 @@ function App() {
   return (
     <AppLayout currentPage={currentPage} onPageChange={setCurrentPage}>
       {currentPage === "dashboard" ? <DashboardPage /> : null}
-      {currentPage !== "dashboard" ? (
-        <p>Страница будет добавлена следующим шагом.</p>
+      {currentPage === "products" ? <ProductsPage /> : null}
+      {currentPage === "reviews" ? (
+        <p>Reviews Page будет добавлена следующим шагом.</p>
+      ) : null}
+      {currentPage === "ai" ? (
+        <p>AI Assistant Page будет добавлена следующим шагом.</p>
       ) : null}
     </AppLayout>
   );

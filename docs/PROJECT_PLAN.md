@@ -41,7 +41,7 @@
 | Настроить React + Vite | Готово |
 | Создать layout | Готово |
 | Создать Dashboard page | Готово |
-| Создать Products page | Не начато |
+| Создать Products page | Готово |
 | Создать Reviews page | Не начато |
 | Создать AI Assistant page | Не начато |
 | Подключить API | В работе |
