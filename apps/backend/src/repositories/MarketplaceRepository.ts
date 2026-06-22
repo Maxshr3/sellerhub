@@ -12,26 +12,22 @@ import {
 } from "../integrations/marketplaces/MarketplaceConnectorTypes";
 
 export class MarketplaceRepository {
-  async findFirstUser() {
-    return prisma.user.findFirst({
-      orderBy: {
-        createdAt: "asc",
-      },
-    });
-  }
-
-  async findConnections() {
+  async findConnections(userId: string) {
     return prisma.marketplace.findMany({
+      where: {
+        userId,
+      },
       orderBy: {
         createdAt: "desc",
       },
     });
   }
 
-  async findConnectionById(id: string) {
-    return prisma.marketplace.findUnique({
+  async findConnectionById(userId: string, id: string) {
+    return prisma.marketplace.findFirst({
       where: {
         id,
+        userId,
       },
     });
   }

@@ -46,8 +46,10 @@ export class MarketplaceService {
     ];
   }
 
-  async getConnections(): Promise<MarketplaceConnectionResponseDto[]> {
-    const connections = await this.marketplaceRepository.findConnections();
+  async getConnections(
+    userId: string,
+  ): Promise<MarketplaceConnectionResponseDto[]> {
+    const connections = await this.marketplaceRepository.findConnections(userId);
 
     return connections.map((connection) =>
       this.mapConnectionToResponse(connection),
@@ -55,16 +57,11 @@ export class MarketplaceService {
   }
 
   async createConnection(
+    userId: string,
     data: CreateMarketplaceConnectionRequestDto,
-  ): Promise<MarketplaceConnectionResponseDto | null> {
-    const user = await this.marketplaceRepository.findFirstUser();
-
-    if (!user) {
-      return null;
-    }
-
+  ): Promise<MarketplaceConnectionResponseDto> {
     const connection = await this.marketplaceRepository.createConnection(
-      user.id,
+      userId,
       data,
     );
 
@@ -72,11 +69,12 @@ export class MarketplaceService {
   }
 
   async updateConnectionStatus(
+    userId: string,
     id: string,
     status: MarketplaceConnectionStatusDto,
   ): Promise<MarketplaceConnectionResponseDto | null> {
     const existingConnection =
-      await this.marketplaceRepository.findConnectionById(id);
+      await this.marketplaceRepository.findConnectionById(userId, id);
 
     if (!existingConnection) {
       return null;
@@ -88,8 +86,14 @@ export class MarketplaceService {
     return this.mapConnectionToResponse(updatedConnection);
   }
 
-  async syncConnection(id: string): Promise<MarketplaceSyncResultDto | null> {
-    const connection = await this.marketplaceRepository.findConnectionById(id);
+  async syncConnection(
+    userId: string,
+    id: string,
+  ): Promise<MarketplaceSyncResultDto | null> {
+    const connection = await this.marketplaceRepository.findConnectionById(
+      userId,
+      id,
+    );
 
     if (!connection) {
       return null;

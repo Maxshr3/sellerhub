@@ -2,9 +2,12 @@ import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../src/app";
 import { prisma } from "../src/database/prisma";
+import { createAccessToken } from "../src/utils/jwt";
 
 describe("Marketplaces API", () => {
   const app = createApp();
+
+  let accessToken = "";
 
   beforeAll(async () => {
     await prisma.aIRecommendation.deleteMany({
@@ -40,7 +43,9 @@ describe("Marketplaces API", () => {
     await prisma.order.deleteMany({
       where: {
         marketplace: {
-          name: "Test Yandex Market",
+          name: {
+            in: ["Test Yandex Market", "Test Wildberries"],
+          },
         },
       },
     });
@@ -61,17 +66,24 @@ describe("Marketplaces API", () => {
       },
     });
 
-    const existingUser = await prisma.user.findFirst();
+    await prisma.user.deleteMany({
+      where: {
+        email: "marketplaces-test@sellerhub.ru",
+      },
+    });
 
-    if (!existingUser) {
-      await prisma.user.create({
-        data: {
-          email: "marketplaces-test@sellerhub.ru",
-          passwordHash: "test_password_hash",
-          name: "Marketplaces Test User",
-        },
-      });
-    }
+    const user = await prisma.user.create({
+      data: {
+        email: "marketplaces-test@sellerhub.ru",
+        passwordHash: "test_password_hash",
+        name: "Marketplaces Test User",
+      },
+    });
+
+    accessToken = createAccessToken({
+      userId: user.id,
+      email: user.email,
+    });
   });
 
   afterAll(async () => {
@@ -160,9 +172,16 @@ describe("Marketplaces API", () => {
     ).toBe(true);
   });
 
+  it("should return 401 for marketplace connections without token", async () => {
+    const response = await request(app).get("/api/marketplaces/connections");
+
+    expect(response.status).toBe(401);
+  });
+
   it("should create marketplace connection", async () => {
     const response = await request(app)
       .post("/api/marketplaces/connections")
+      .set("Authorization", `Bearer ${accessToken}`)
       .send({
         name: "Test Yandex Market",
         type: "YANDEX_MARKET",
@@ -182,6 +201,7 @@ describe("Marketplaces API", () => {
   it("should sync marketplace connection with mock data", async () => {
     const createResponse = await request(app)
       .post("/api/marketplaces/connections")
+      .set("Authorization", `Bearer ${accessToken}`)
       .send({
         name: "Test Yandex Market",
         type: "YANDEX_MARKET",
@@ -192,9 +212,9 @@ describe("Marketplaces API", () => {
 
     const connectionId = createResponse.body.data.id;
 
-    const response = await request(app).post(
-      `/api/marketplaces/connections/${connectionId}/sync`,
-    );
+    const response = await request(app)
+      .post(`/api/marketplaces/connections/${connectionId}/sync`)
+      .set("Authorization", `Bearer ${accessToken}`);
 
     expect(response.status).toBe(200);
     expect(response.body.data.imported.products).toBe(3);
@@ -205,8 +225,10 @@ describe("Marketplaces API", () => {
     expect(response.body.data.connection.lastSyncAt).toBeDefined();
   });
 
-  it("should return marketplace connections", async () => {
-    const response = await request(app).get("/api/marketplaces/connections");
+  it("should return marketplace connections for current user", async () => {
+    const response = await request(app)
+      .get("/api/marketplaces/connections")
+      .set("Authorization", `Bearer ${accessToken}`);
 
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body.data)).toBe(true);
@@ -215,6 +237,7 @@ describe("Marketplaces API", () => {
   it("should update marketplace connection status", async () => {
     const createResponse = await request(app)
       .post("/api/marketplaces/connections")
+      .set("Authorization", `Bearer ${accessToken}`)
       .send({
         name: "Test Wildberries",
         type: "WILDBERRIES",
@@ -227,6 +250,7 @@ describe("Marketplaces API", () => {
 
     const response = await request(app)
       .patch(`/api/marketplaces/connections/${connectionId}/status`)
+      .set("Authorization", `Bearer ${accessToken}`)
       .send({
         status: "DISCONNECTED",
       });
@@ -239,6 +263,7 @@ describe("Marketplaces API", () => {
   it("should return 400 for invalid marketplace type", async () => {
     const response = await request(app)
       .post("/api/marketplaces/connections")
+      .set("Authorization", `Bearer ${accessToken}`)
       .send({
         name: "Invalid Marketplace",
         type: "BAD_TYPE",

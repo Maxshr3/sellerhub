@@ -6,6 +6,7 @@ import {
   MarketplaceTypeDto,
   UpdateMarketplaceStatusRequestDto,
 } from "../dto/MarketplaceDto";
+import { AuthLocals } from "../middlewares/auth.middleware";
 import { MarketplaceService } from "../services/MarketplaceService";
 
 type MarketplaceParams = {
@@ -24,8 +25,21 @@ export class MarketplaceController {
     });
   };
 
-  getConnections = async (_req: Request, res: Response) => {
-    const connections = await this.marketplaceService.getConnections();
+  getConnections = async (
+    _req: Request,
+    res: Response<unknown, AuthLocals>,
+  ) => {
+    const authUser = res.locals.user;
+
+    if (!authUser) {
+      return res.status(401).json({
+        message: "Unauthorized",
+      });
+    }
+
+    const connections = await this.marketplaceService.getConnections(
+      authUser.userId,
+    );
 
     return res.status(200).json({
       data: connections,
@@ -35,8 +49,16 @@ export class MarketplaceController {
 
   createConnection = async (
     req: Request<unknown, unknown, CreateMarketplaceConnectionRequestDto>,
-    res: Response,
+    res: Response<unknown, AuthLocals>,
   ) => {
+    const authUser = res.locals.user;
+
+    if (!authUser) {
+      return res.status(401).json({
+        message: "Unauthorized",
+      });
+    }
+
     const { name, type, externalAccountId, apiKey, syncMode } = req.body;
 
     if (typeof name !== "string" || name.trim().length < 2) {
@@ -63,22 +85,19 @@ export class MarketplaceController {
       });
     }
 
-    const connection = await this.marketplaceService.createConnection({
-      name: name.trim(),
-      type: parsedType,
-      externalAccountId:
-        typeof externalAccountId === "string"
-          ? externalAccountId.trim()
-          : undefined,
-      apiKey: typeof apiKey === "string" ? apiKey.trim() : undefined,
-      syncMode: parsedSyncMode ?? "MOCK",
-    });
-
-    if (!connection) {
-      return res.status(400).json({
-        message: "User for marketplace connection was not found",
-      });
-    }
+    const connection = await this.marketplaceService.createConnection(
+      authUser.userId,
+      {
+        name: name.trim(),
+        type: parsedType,
+        externalAccountId:
+          typeof externalAccountId === "string"
+            ? externalAccountId.trim()
+            : undefined,
+        apiKey: typeof apiKey === "string" ? apiKey.trim() : undefined,
+        syncMode: parsedSyncMode ?? "MOCK",
+      },
+    );
 
     return res.status(201).json({
       data: connection,
@@ -87,8 +106,16 @@ export class MarketplaceController {
 
   updateConnectionStatus = async (
     req: Request<MarketplaceParams, unknown, UpdateMarketplaceStatusRequestDto>,
-    res: Response,
+    res: Response<unknown, AuthLocals>,
   ) => {
+    const authUser = res.locals.user;
+
+    if (!authUser) {
+      return res.status(401).json({
+        message: "Unauthorized",
+      });
+    }
+
     const { id } = req.params;
     const status = this.parseConnectionStatus(req.body.status);
 
@@ -100,6 +127,7 @@ export class MarketplaceController {
     }
 
     const connection = await this.marketplaceService.updateConnectionStatus(
+      authUser.userId,
       id,
       status,
     );
@@ -115,10 +143,24 @@ export class MarketplaceController {
     });
   };
 
-  syncConnection = async (req: Request<MarketplaceParams>, res: Response) => {
+  syncConnection = async (
+    req: Request<MarketplaceParams>,
+    res: Response<unknown, AuthLocals>,
+  ) => {
+    const authUser = res.locals.user;
+
+    if (!authUser) {
+      return res.status(401).json({
+        message: "Unauthorized",
+      });
+    }
+
     const { id } = req.params;
 
-    const result = await this.marketplaceService.syncConnection(id);
+    const result = await this.marketplaceService.syncConnection(
+      authUser.userId,
+      id,
+    );
 
     if (!result) {
       return res.status(404).json({
@@ -132,41 +174,21 @@ export class MarketplaceController {
   };
 
   private parseMarketplaceType(value: unknown): MarketplaceTypeDto | null {
-    if (value === "YANDEX_MARKET") {
-      return "YANDEX_MARKET";
-    }
-
-    if (value === "WILDBERRIES") {
-      return "WILDBERRIES";
-    }
-
-    if (value === "AVITO") {
-      return "AVITO";
-    }
-
-    if (value === "OZON") {
-      return "OZON";
-    }
-
-    if (value === "OTHER") {
-      return "OTHER";
-    }
+    if (value === "YANDEX_MARKET") return "YANDEX_MARKET";
+    if (value === "WILDBERRIES") return "WILDBERRIES";
+    if (value === "AVITO") return "AVITO";
+    if (value === "OZON") return "OZON";
+    if (value === "OTHER") return "OTHER";
 
     return null;
   }
 
-  private parseSyncMode(value: unknown): MarketplaceSyncModeDto | undefined | null {
-    if (value === undefined) {
-      return undefined;
-    }
-
-    if (value === "MOCK") {
-      return "MOCK";
-    }
-
-    if (value === "API") {
-      return "API";
-    }
+  private parseSyncMode(
+    value: unknown,
+  ): MarketplaceSyncModeDto | undefined | null {
+    if (value === undefined) return undefined;
+    if (value === "MOCK") return "MOCK";
+    if (value === "API") return "API";
 
     return null;
   }
@@ -174,17 +196,9 @@ export class MarketplaceController {
   private parseConnectionStatus(
     value: unknown,
   ): MarketplaceConnectionStatusDto | null {
-    if (value === "CONNECTED") {
-      return "CONNECTED";
-    }
-
-    if (value === "DISCONNECTED") {
-      return "DISCONNECTED";
-    }
-
-    if (value === "NEEDS_ATTENTION") {
-      return "NEEDS_ATTENTION";
-    }
+    if (value === "CONNECTED") return "CONNECTED";
+    if (value === "DISCONNECTED") return "DISCONNECTED";
+    if (value === "NEEDS_ATTENTION") return "NEEDS_ATTENTION";
 
     return null;
   }

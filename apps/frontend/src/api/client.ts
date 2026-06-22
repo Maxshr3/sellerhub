@@ -1,9 +1,25 @@
+import { getStoredToken } from "../utils/authStorage";
+
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
-export async function apiGet<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`);
+function buildHeaders(hasBody: boolean) {
+  const headers: HeadersInit = {};
 
+  if (hasBody) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const token = getStoredToken();
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
+}
+
+async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     throw new Error(`API error: ${response.status}`);
   }
@@ -11,40 +27,40 @@ export async function apiGet<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function apiPost<TResponse, TBody>(
-  path: string,
-  body: TBody,
-): Promise<TResponse> {
+export async function apiGet<T>(path: string): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
+    headers: buildHeaders(false),
   });
 
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status}`);
-  }
-
-  return response.json() as Promise<TResponse>;
+  return handleResponse<T>(response);
 }
 
-export async function apiPatch<TResponse, TBody>(
+export async function apiPost<TResponse, TBody = undefined>(
   path: string,
   body?: TBody,
 ): Promise<TResponse> {
+  const hasBody = body !== undefined;
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: body ? JSON.stringify(body) : undefined,
+    method: "POST",
+    headers: buildHeaders(hasBody),
+    body: hasBody ? JSON.stringify(body) : undefined,
   });
 
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status}`);
-  }
+  return handleResponse<TResponse>(response);
+}
 
-  return response.json() as Promise<TResponse>;
+export async function apiPatch<TResponse, TBody = undefined>(
+  path: string,
+  body?: TBody,
+): Promise<TResponse> {
+  const hasBody = body !== undefined;
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "PATCH",
+    headers: buildHeaders(hasBody),
+    body: hasBody ? JSON.stringify(body) : undefined,
+  });
+
+  return handleResponse<TResponse>(response);
 }
