@@ -1,5 +1,7 @@
 export type ReviewStatus = "NEW" | "ANSWERED" | "ARCHIVED";
 
+export type ReviewPriority = "HIGH" | "MEDIUM" | "LOW";
+
 export type Review = {
   id: string;
   productId: string;
@@ -14,6 +16,7 @@ export type Review = {
   rating: number;
   text: string;
   status: ReviewStatus;
+  priority: ReviewPriority;
   answerText: string | null;
   createdAt: string;
   updatedAt: string;
@@ -26,4 +29,21 @@ export type ReviewsResponse = {
 
 export type ReviewResponse = {
   data: Review;
+};
+
+export type ReviewFilters = {
+  status?: ReviewStatus;
+  search?: string;
+  ratingMax?: number;
+  ratingMin?: number;
+  hasAnswer?: boolean;
+  priority?: ReviewPriority;
+};
+
+export type GenerateReviewAnswerResponse = {
+  data: {
+    reviewId: string;
+    suggestedAnswer: string;
+    tone: "FRIENDLY" | "APOLOGY" | "NEUTRAL";
+  };
 };

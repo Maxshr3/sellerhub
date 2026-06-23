@@ -6,7 +6,8 @@ import { prisma } from "../src/database/prisma";
 describe("Reviews API", () => {
   const app = createApp();
 
-  let testReviewId = "";
+  let highPriorityReviewId = "";
+  let neutralReviewId = "";
 
   beforeAll(async () => {
     await prisma.review.deleteMany({
@@ -63,17 +64,28 @@ describe("Reviews API", () => {
       },
     });
 
-    const review = await prisma.review.create({
+    const highPriorityReview = await prisma.review.create({
       data: {
         productId: product.id,
-        authorName: "Reviews Tester",
-        rating: 4,
-        text: "Тестовый отзыв для Reviews API",
+        authorName: "Angry Tester",
+        rating: 2,
+        text: "Товар приехал с повреждённой упаковкой",
         status: "NEW",
       },
     });
 
-    testReviewId = review.id;
+    const neutralReview = await prisma.review.create({
+      data: {
+        productId: product.id,
+        authorName: "Neutral Tester",
+        rating: 4,
+        text: "В целом нормально, но доставка могла быть быстрее",
+        status: "NEW",
+      },
+    });
+
+    highPriorityReviewId = highPriorityReview.id;
+    neutralReviewId = neutralReview.id;
   });
 
   afterAll(async () => {
@@ -111,18 +123,53 @@ describe("Reviews API", () => {
 
     expect(response.status).toBe(200);
     expect(Array.isArray(response.body.data)).toBe(true);
-    expect(response.body.total).toBeGreaterThanOrEqual(1);
+    expect(response.body.total).toBeGreaterThanOrEqual(2);
   });
 
   it("should filter reviews by status", async () => {
     const response = await request(app).get("/api/reviews?status=NEW");
 
     expect(response.status).toBe(200);
-    expect(response.body.data.length).toBeGreaterThanOrEqual(1);
     expect(
       response.body.data.some(
         (review: { id: string; status: string }) =>
-          review.id === testReviewId && review.status === "NEW",
+          review.id === highPriorityReviewId && review.status === "NEW",
+      ),
+    ).toBe(true);
+  });
+
+  it("should filter high priority reviews", async () => {
+    const response = await request(app).get("/api/reviews?priority=HIGH");
+
+    expect(response.status).toBe(200);
+    expect(
+      response.body.data.some(
+        (review: { id: string; priority: string }) =>
+          review.id === highPriorityReviewId && review.priority === "HIGH",
+      ),
+    ).toBe(true);
+  });
+
+  it("should filter negative reviews by ratingMax", async () => {
+    const response = await request(app).get("/api/reviews?ratingMax=3");
+
+    expect(response.status).toBe(200);
+    expect(
+      response.body.data.some(
+        (review: { id: string; rating: number }) =>
+          review.id === highPriorityReviewId && review.rating <= 3,
+      ),
+    ).toBe(true);
+  });
+
+  it("should filter reviews without answer", async () => {
+    const response = await request(app).get("/api/reviews?hasAnswer=false");
+
+    expect(response.status).toBe(200);
+    expect(
+      response.body.data.some(
+        (review: { id: string; answerText: string | null }) =>
+          review.id === neutralReviewId && review.answerText === null,
       ),
     ).toBe(true);
   });
@@ -131,35 +178,60 @@ describe("Reviews API", () => {
     const response = await request(app).get("/api/reviews?status=BAD");
 
     expect(response.status).toBe(400);
-    expect(response.body.message).toBe("Invalid review status");
+    expect(response.body.message).toBe("Invalid review filters");
   });
 
   it("should return review by id", async () => {
-    const response = await request(app).get(`/api/reviews/${testReviewId}`);
+    const response = await request(app).get(
+      `/api/reviews/${highPriorityReviewId}`,
+    );
 
     expect(response.status).toBe(200);
-    expect(response.body.data.id).toBe(testReviewId);
-    expect(response.body.data.text).toBe("Тестовый отзыв для Reviews API");
+    expect(response.body.data.id).toBe(highPriorityReviewId);
+    expect(response.body.data.priority).toBe("HIGH");
+  });
+
+  it("should generate AI answer for review", async () => {
+    const response = await request(app).post(
+      `/api/reviews/${highPriorityReviewId}/ai-answer`,
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.reviewId).toBe(highPriorityReviewId);
+    expect(response.body.data.suggestedAnswer).toContain("Здравствуйте");
+    expect(response.body.data.tone).toBe("APOLOGY");
   });
 
   it("should answer review", async () => {
     const response = await request(app)
-      .patch(`/api/reviews/${testReviewId}/answer`)
+      .patch(`/api/reviews/${neutralReviewId}/answer`)
       .send({
-        answerText: "Спасибо за отзыв! Мы рады, что товар вам понравился.",
+        answerText: "Спасибо за отзыв! Мы учтём ваше замечание.",
       });
 
     expect(response.status).toBe(200);
-    expect(response.body.data.id).toBe(testReviewId);
+    expect(response.body.data.id).toBe(neutralReviewId);
     expect(response.body.data.status).toBe("ANSWERED");
     expect(response.body.data.answerText).toBe(
-      "Спасибо за отзыв! Мы рады, что товар вам понравился.",
+      "Спасибо за отзыв! Мы учтём ваше замечание.",
     );
+  });
+
+  it("should update review status", async () => {
+    const response = await request(app)
+      .patch(`/api/reviews/${highPriorityReviewId}/status`)
+      .send({
+        status: "ARCHIVED",
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.id).toBe(highPriorityReviewId);
+    expect(response.body.data.status).toBe("ARCHIVED");
   });
 
   it("should return 400 when answerText is empty", async () => {
     const response = await request(app)
-      .patch(`/api/reviews/${testReviewId}/answer`)
+      .patch(`/api/reviews/${highPriorityReviewId}/answer`)
       .send({
         answerText: "",
       });

@@ -2,7 +2,9 @@ import { Request, Response } from "express";
 import {
   AnswerReviewRequestDto,
   ReviewListQueryDto,
+  ReviewPriorityDto,
   ReviewStatusDto,
+  UpdateReviewStatusRequestDto,
 } from "../dto/ReviewDto";
 import { ReviewService } from "../services/ReviewService";
 
@@ -14,22 +16,13 @@ export class ReviewController {
   constructor(private readonly reviewService: ReviewService) {}
 
   getReviews = async (req: Request, res: Response) => {
-    const status = this.parseReviewStatus(req.query.status);
+    const filters = this.parseReviewFilters(req.query);
 
-    if (status === null) {
+    if (filters === null) {
       return res.status(400).json({
-        message: "Invalid review status",
-        allowedStatuses: ["NEW", "ANSWERED", "ARCHIVED"],
+        message: "Invalid review filters",
       });
     }
-
-    const filters: ReviewListQueryDto = {
-      status,
-      productId:
-        typeof req.query.productId === "string"
-          ? req.query.productId
-          : undefined,
-    };
 
     const reviews = await this.reviewService.getReviews(filters);
 
@@ -40,9 +33,7 @@ export class ReviewController {
   };
 
   getReviewById = async (req: Request<ReviewParams>, res: Response) => {
-    const { id } = req.params;
-
-    const review = await this.reviewService.getReviewById(id);
+    const review = await this.reviewService.getReviewById(req.params.id);
 
     if (!review) {
       return res.status(404).json({
@@ -59,7 +50,6 @@ export class ReviewController {
     req: Request<ReviewParams, unknown, AnswerReviewRequestDto>,
     res: Response,
   ) => {
-    const { id } = req.params;
     const { answerText } = req.body;
 
     if (typeof answerText !== "string" || answerText.trim().length < 2) {
@@ -69,7 +59,7 @@ export class ReviewController {
     }
 
     const review = await this.reviewService.answerReview(
-      id,
+      req.params.id,
       answerText.trim(),
     );
 
@@ -84,11 +74,116 @@ export class ReviewController {
     });
   };
 
-  private parseReviewStatus(value: unknown): ReviewStatusDto | undefined | null {
-    if (value === undefined) {
-      return undefined;
+  updateReviewStatus = async (
+    req: Request<ReviewParams, unknown, UpdateReviewStatusRequestDto>,
+    res: Response,
+  ) => {
+    const status = this.parseReviewStatus(req.body.status);
+
+    if (!status) {
+      return res.status(400).json({
+        message: "Invalid review status",
+      });
     }
 
+    const review = await this.reviewService.updateReviewStatus(
+      req.params.id,
+      status,
+    );
+
+    if (!review) {
+      return res.status(404).json({
+        message: "Review not found",
+      });
+    }
+
+    return res.status(200).json({
+      data: review,
+    });
+  };
+
+  generateReviewAnswer = async (
+    req: Request<ReviewParams>,
+    res: Response,
+  ) => {
+    const result = await this.reviewService.generateReviewAnswer(req.params.id);
+
+    if (!result) {
+      return res.status(404).json({
+        message: "Review not found",
+      });
+    }
+
+    return res.status(200).json({
+      data: result,
+    });
+  };
+
+    private parseReviewFilters(
+    query: Request["query"],
+  ): ReviewListQueryDto | null {
+    let status: ReviewStatusDto | undefined;
+
+    if (typeof query.status === "string") {
+      const parsedStatus = this.parseReviewStatus(query.status);
+
+      if (!parsedStatus) {
+        return null;
+      }
+
+      status = parsedStatus;
+    }
+
+    let priority: ReviewPriorityDto | undefined;
+
+    if (typeof query.priority === "string") {
+      const parsedPriority = this.parseReviewPriority(query.priority);
+
+      if (!parsedPriority) {
+        return null;
+      }
+
+      priority = parsedPriority;
+    }
+
+    const ratingMin =
+      typeof query.ratingMin === "string" && query.ratingMin.length > 0
+        ? Number(query.ratingMin)
+        : undefined;
+
+    const ratingMax =
+      typeof query.ratingMax === "string" && query.ratingMax.length > 0
+        ? Number(query.ratingMax)
+        : undefined;
+
+    if (
+      ratingMin !== undefined &&
+      (Number.isNaN(ratingMin) || ratingMin < 1 || ratingMin > 5)
+    ) {
+      return null;
+    }
+
+    if (
+      ratingMax !== undefined &&
+      (Number.isNaN(ratingMax) || ratingMax < 1 || ratingMax > 5)
+    ) {
+      return null;
+    }
+
+    return {
+      status,
+      priority,
+      search:
+        typeof query.search === "string" && query.search.length > 0
+          ? query.search
+          : undefined,
+      ratingMin,
+      ratingMax,
+      hasAnswer: this.parseBooleanQuery(query.hasAnswer),
+    };
+  }
+
+  private parseReviewStatus(value: unknown): ReviewStatusDto | null {
     if (value === "NEW") {
       return "NEW";
     }
@@ -102,5 +197,33 @@ export class ReviewController {
     }
 
     return null;
+  }
+
+  private parseReviewPriority(value: unknown): ReviewPriorityDto | null {
+    if (value === "HIGH") {
+      return "HIGH";
+    }
+
+    if (value === "MEDIUM") {
+      return "MEDIUM";
+    }
+
+    if (value === "LOW") {
+      return "LOW";
+    }
+
+    return null;
+  }
+
+  private parseBooleanQuery(value: unknown): boolean | undefined {
+    if (value === "true") {
+      return true;
+    }
+
+    if (value === "false") {
+      return false;
+    }
+
+    return undefined;
   }
 }

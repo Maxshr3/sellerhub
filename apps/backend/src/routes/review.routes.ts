@@ -12,5 +12,7 @@ const reviewController = new ReviewController(reviewService);
 router.get("/reviews", reviewController.getReviews);
 router.get("/reviews/:id", reviewController.getReviewById);
 router.patch("/reviews/:id/answer", reviewController.answerReview);
+router.patch("/reviews/:id/status", reviewController.updateReviewStatus);
+router.post("/reviews/:id/ai-answer", reviewController.generateReviewAnswer);
 
 export default router;
