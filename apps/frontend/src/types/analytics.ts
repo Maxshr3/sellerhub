@@ -19,6 +19,13 @@ export type AnalyticsKpiCard = {
   interpretation: string;
 };
 
+export type MarketplaceFilterOption = {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+};
+
 export type MarketplaceRevenue = {
   marketplaceId: string;
   marketplaceName: string;
@@ -33,6 +40,29 @@ export type SalesFunnel = {
   deliveredOrders: number;
   returnedOrders: number;
   cancelledOrders: number;
+};
+
+export type SellerActionItem = {
+  id: string;
+  priority: "HIGH" | "MEDIUM" | "LOW";
+  title: string;
+  description: string;
+  metric: string;
+  recommendation: string;
+};
+
+export type ProblemProduct = {
+  id: string;
+  title: string;
+  sku: string;
+  marketplaceName: string;
+  marketplaceType: string;
+  stock: number;
+  rating: string | null;
+  views: number;
+  ordersCount: number;
+  conversionRate: string;
+  problems: string[];
 };
 
 export type AnalyticsProduct = {
@@ -53,10 +83,18 @@ export type TopProduct = AnalyticsProduct & {
 };
 
 export type DashboardAnalytics = {
+  filters: {
+    marketplaceId: string | null;
+    dateFrom: string | null;
+    dateTo: string | null;
+  };
+  marketplaceOptions: MarketplaceFilterOption[];
   summary: AnalyticsSummary;
   kpiCards: AnalyticsKpiCard[];
+  actionItems: SellerActionItem[];
   marketplaceRevenue: MarketplaceRevenue[];
   salesFunnel: SalesFunnel;
+  problemProducts: ProblemProduct[];
   lowStockProducts: AnalyticsProduct[];
   topProducts: TopProduct[];
 };

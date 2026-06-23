@@ -1,8 +1,24 @@
 import { prisma } from "../database/prisma";
+import { DashboardAnalyticsQueryDto } from "../dto/AnalyticsDto";
 
 export class AnalyticsRepository {
-  async getOrdersAggregate() {
+  async findMarketplaceOptions() {
+    return prisma.marketplace.findMany({
+      orderBy: {
+        name: "asc",
+      },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        status: true,
+      },
+    });
+  }
+
+  async getOrdersAggregate(query: DashboardAnalyticsQueryDto) {
     return prisma.order.aggregate({
+      where: this.buildOrderWhere(query),
       _sum: {
         totalPrice: true,
         quantity: true,
@@ -13,17 +29,23 @@ export class AnalyticsRepository {
     });
   }
 
-  async getProductsAggregate() {
+  async getProductsAggregate(query: DashboardAnalyticsQueryDto) {
+    const productWhere = this.buildProductWhere(query);
+
     const [totalProducts, activeProducts, lowStockProducts, stockAggregate] =
       await Promise.all([
-        prisma.product.count(),
+        prisma.product.count({
+          where: productWhere,
+        }),
         prisma.product.count({
           where: {
+            ...productWhere,
             isActive: true,
           },
         }),
         prisma.product.count({
           where: {
+            ...productWhere,
             isActive: true,
             stock: {
               lte: 10,
@@ -31,11 +53,12 @@ export class AnalyticsRepository {
           },
         }),
         prisma.product.aggregate({
+          where: {
+            ...productWhere,
+            isActive: true,
+          },
           _sum: {
             stock: true,
-          },
-          where: {
-            isActive: true,
           },
         }),
       ]);
@@ -48,8 +71,9 @@ export class AnalyticsRepository {
     };
   }
 
-  async getReviewsAggregate() {
+  async getReviewsAggregate(query: DashboardAnalyticsQueryDto) {
     return prisma.review.aggregate({
+      where: this.buildReviewWhere(query),
       _avg: {
         rating: true,
       },
@@ -59,16 +83,18 @@ export class AnalyticsRepository {
     });
   }
 
-  async getUnansweredReviewsCount() {
+  async getUnansweredReviewsCount(query: DashboardAnalyticsQueryDto) {
     return prisma.review.count({
       where: {
+        ...this.buildReviewWhere(query),
         status: "NEW",
       },
     });
   }
 
-  async getProductAnalyticsAggregate() {
+  async getProductAnalyticsAggregate(query: DashboardAnalyticsQueryDto) {
     return prisma.productAnalytics.aggregate({
+      where: this.buildProductAnalyticsWhere(query),
       _sum: {
         views: true,
         ordersCount: true,
@@ -77,17 +103,19 @@ export class AnalyticsRepository {
     });
   }
 
-  async getOrderStatusCounts() {
+  async getOrderStatusCounts(query: DashboardAnalyticsQueryDto) {
     return prisma.order.groupBy({
       by: ["status"],
+      where: this.buildOrderWhere(query),
       _count: {
         id: true,
       },
     });
   }
 
-  async findOrdersWithMarketplace() {
+  async findOrdersWithMarketplace(query: DashboardAnalyticsQueryDto) {
     return prisma.order.findMany({
+      where: this.buildOrderWhere(query),
       include: {
         marketplace: {
           select: {
@@ -100,9 +128,10 @@ export class AnalyticsRepository {
     });
   }
 
-  async findLowStockProducts() {
+  async findLowStockProducts(query: DashboardAnalyticsQueryDto) {
     return prisma.product.findMany({
       where: {
+        ...this.buildProductWhere(query),
         isActive: true,
         stock: {
           lte: 10,
@@ -123,8 +152,9 @@ export class AnalyticsRepository {
     });
   }
 
-  async findTopProducts() {
+  async findTopProducts(query: DashboardAnalyticsQueryDto) {
     return prisma.productAnalytics.findMany({
+      where: this.buildProductAnalyticsWhere(query),
       include: {
         product: {
           include: {
@@ -142,5 +172,95 @@ export class AnalyticsRepository {
       },
       take: 5,
     });
+  }
+
+  async findProblemProducts(query: DashboardAnalyticsQueryDto) {
+    return prisma.product.findMany({
+      where: this.buildProductWhere(query),
+      include: {
+        marketplace: {
+          select: {
+            name: true,
+            type: true,
+          },
+        },
+        reviews: {
+          select: {
+            status: true,
+            rating: true,
+          },
+        },
+        analytics: {
+          where: this.buildAnalyticsDateWhere(query),
+          select: {
+            views: true,
+            ordersCount: true,
+            conversionRate: true,
+          },
+        },
+      },
+      orderBy: {
+        stock: "asc",
+      },
+      take: 20,
+    });
+  }
+
+  private buildOrderWhere(query: DashboardAnalyticsQueryDto) {
+    return {
+      ...(query.marketplaceId ? { marketplaceId: query.marketplaceId } : {}),
+      ...(query.dateFrom || query.dateTo
+        ? {
+            orderedAt: {
+              ...(query.dateFrom ? { gte: new Date(query.dateFrom) } : {}),
+              ...(query.dateTo ? { lte: new Date(query.dateTo) } : {}),
+            },
+          }
+        : {}),
+    };
+  }
+
+  private buildProductWhere(query: DashboardAnalyticsQueryDto) {
+    return {
+      ...(query.marketplaceId ? { marketplaceId: query.marketplaceId } : {}),
+    };
+  }
+
+  private buildReviewWhere(query: DashboardAnalyticsQueryDto) {
+    return {
+      ...(query.marketplaceId
+        ? {
+            product: {
+              marketplaceId: query.marketplaceId,
+            },
+          }
+        : {}),
+    };
+  }
+
+  private buildProductAnalyticsWhere(query: DashboardAnalyticsQueryDto) {
+    return {
+      ...this.buildAnalyticsDateWhere(query),
+      ...(query.marketplaceId
+        ? {
+            product: {
+              marketplaceId: query.marketplaceId,
+            },
+          }
+        : {}),
+    };
+  }
+
+  private buildAnalyticsDateWhere(query: DashboardAnalyticsQueryDto) {
+    return {
+      ...(query.dateFrom || query.dateTo
+        ? {
+            date: {
+              ...(query.dateFrom ? { gte: new Date(query.dateFrom) } : {}),
+              ...(query.dateTo ? { lte: new Date(query.dateTo) } : {}),
+            },
+          }
+        : {}),
+    };
   }
 }

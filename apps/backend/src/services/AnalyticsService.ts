@@ -2,8 +2,12 @@ import {
   AnalyticsKpiCardDto,
   AnalyticsProductDto,
   DashboardAnalyticsDto,
+  DashboardAnalyticsQueryDto,
+  MarketplaceFilterOptionDto,
   MarketplaceRevenueDto,
+  ProblemProductDto,
   SalesFunnelDto,
+  SellerActionItemDto,
   TopProductDto,
 } from "../dto/AnalyticsDto";
 import { AnalyticsRepository } from "../repositories/AnalyticsRepository";
@@ -20,11 +24,18 @@ type OrderWithMarketplace = Awaited<
   ReturnType<AnalyticsRepository["findOrdersWithMarketplace"]>
 >[number];
 
+type ProblemProductFromDatabase = Awaited<
+  ReturnType<AnalyticsRepository["findProblemProducts"]>
+>[number];
+
 export class AnalyticsService {
   constructor(private readonly analyticsRepository: AnalyticsRepository) {}
 
-  async getDashboardAnalytics(): Promise<DashboardAnalyticsDto> {
+  async getDashboardAnalytics(
+    query: DashboardAnalyticsQueryDto = {},
+  ): Promise<DashboardAnalyticsDto> {
     const [
+      marketplaceOptions,
       ordersAggregate,
       productsAggregate,
       reviewsAggregate,
@@ -34,16 +45,19 @@ export class AnalyticsService {
       unansweredReviewsCount,
       lowStockProducts,
       topProducts,
+      problemProducts,
     ] = await Promise.all([
-      this.analyticsRepository.getOrdersAggregate(),
-      this.analyticsRepository.getProductsAggregate(),
-      this.analyticsRepository.getReviewsAggregate(),
-      this.analyticsRepository.getProductAnalyticsAggregate(),
-      this.analyticsRepository.getOrderStatusCounts(),
-      this.analyticsRepository.findOrdersWithMarketplace(),
-      this.analyticsRepository.getUnansweredReviewsCount(),
-      this.analyticsRepository.findLowStockProducts(),
-      this.analyticsRepository.findTopProducts(),
+      this.analyticsRepository.findMarketplaceOptions(),
+      this.analyticsRepository.getOrdersAggregate(query),
+      this.analyticsRepository.getProductsAggregate(query),
+      this.analyticsRepository.getReviewsAggregate(query),
+      this.analyticsRepository.getProductAnalyticsAggregate(query),
+      this.analyticsRepository.getOrderStatusCounts(query),
+      this.analyticsRepository.findOrdersWithMarketplace(query),
+      this.analyticsRepository.getUnansweredReviewsCount(query),
+      this.analyticsRepository.findLowStockProducts(query),
+      this.analyticsRepository.findTopProducts(query),
+      this.analyticsRepository.findProblemProducts(query),
     ]);
 
     const totalRevenueNumber = Number(
@@ -68,7 +82,9 @@ export class AnalyticsService {
       totalOrders > 0 ? (totalRevenueNumber / totalOrders).toFixed(2) : "0.00";
 
     const returnRate =
-      totalOrders > 0 ? ((returnedOrders / totalOrders) * 100).toFixed(2) : "0.00";
+      totalOrders > 0
+        ? ((returnedOrders / totalOrders) * 100).toFixed(2)
+        : "0.00";
 
     const cancellationRate =
       totalOrders > 0
@@ -88,8 +104,7 @@ export class AnalyticsService {
         ? (totalRevenueNumber / productsAggregate.totalProducts).toFixed(2)
         : "0.00";
 
-    const averageDailySales =
-      totalSoldItems > 0 ? totalSoldItems / 30 : 0;
+    const averageDailySales = totalSoldItems > 0 ? totalSoldItems / 30 : 0;
 
     const stockCoverageDays =
       averageDailySales > 0
@@ -104,7 +119,17 @@ export class AnalyticsService {
       cancelledOrders,
     };
 
+    const mappedProblemProducts = this.buildProblemProducts(problemProducts);
+
     return {
+      filters: {
+        marketplaceId: query.marketplaceId ?? null,
+        dateFrom: query.dateFrom ?? null,
+        dateTo: query.dateTo ?? null,
+      },
+      marketplaceOptions: marketplaceOptions.map((marketplace) =>
+        this.mapMarketplaceOption(marketplace),
+      ),
       summary: {
         totalRevenue: totalRevenueNumber.toFixed(2),
         totalOrders,
@@ -132,9 +157,18 @@ export class AnalyticsService {
         stockCoverageDays,
         unansweredReviewsCount,
       }),
-      marketplaceRevenue:
-        this.buildMarketplaceRevenue(ordersWithMarketplace),
+      actionItems: this.buildActionItems({
+        lowStockProductsCount: productsAggregate.lowStockProducts,
+        unansweredReviewsCount,
+        conversionRate,
+        returnRate,
+        cancellationRate,
+        stockCoverageDays,
+        problemProductsCount: mappedProblemProducts.length,
+      }),
+      marketplaceRevenue: this.buildMarketplaceRevenue(ordersWithMarketplace),
       salesFunnel,
+      problemProducts: mappedProblemProducts,
       lowStockProducts: lowStockProducts.map((product) =>
         this.mapProductToAnalyticsProduct(product),
       ),
@@ -249,13 +283,172 @@ export class AnalyticsService {
     ];
   }
 
+  private buildActionItems(data: {
+    lowStockProductsCount: number;
+    unansweredReviewsCount: number;
+    conversionRate: string;
+    returnRate: string;
+    cancellationRate: string;
+    stockCoverageDays: string;
+    problemProductsCount: number;
+  }): SellerActionItemDto[] {
+    const actions: SellerActionItemDto[] = [];
+
+    if (data.lowStockProductsCount > 0) {
+      actions.push({
+        id: "low-stock",
+        priority: "HIGH",
+        title: "Пополнить товары с низким остатком",
+        description: `Найдено товаров с остатком 10 или меньше: ${data.lowStockProductsCount}.`,
+        metric: `${data.lowStockProductsCount} товаров`,
+        recommendation:
+          "Проверь товары с низким остатком и пополни склад, чтобы не потерять продажи и позиции карточек.",
+      });
+    }
+
+    if (data.unansweredReviewsCount > 0) {
+      actions.push({
+        id: "unanswered-reviews",
+        priority: "HIGH",
+        title: "Ответить на новые отзывы",
+        description: `Без ответа осталось отзывов: ${data.unansweredReviewsCount}.`,
+        metric: `${data.unansweredReviewsCount} отзывов`,
+        recommendation:
+          "Ответь на отзывы, особенно на низкие оценки. Это повышает доверие покупателей.",
+      });
+    }
+
+    if (Number(data.conversionRate) < 0.2) {
+      actions.push({
+        id: "low-conversion",
+        priority: "MEDIUM",
+        title: "Проверить карточки с низкой конверсией",
+        description: `Текущая конверсия: ${data.conversionRate}%.`,
+        metric: `${data.conversionRate}%`,
+        recommendation:
+          "Проверь цену, фото, описание и отзывы. Низкая конверсия часто означает слабую карточку товара.",
+      });
+    }
+
+    if (Number(data.returnRate) > 10) {
+      actions.push({
+        id: "high-return-rate",
+        priority: "MEDIUM",
+        title: "Разобраться с возвратами",
+        description: `Доля возвратов: ${data.returnRate}%.`,
+        metric: `${data.returnRate}%`,
+        recommendation:
+          "Посмотри товары с плохими отзывами и проверь, не расходится ли описание с реальным товаром.",
+      });
+    }
+
+    if (Number(data.cancellationRate) > 10) {
+      actions.push({
+        id: "high-cancellation-rate",
+        priority: "MEDIUM",
+        title: "Снизить долю отмен",
+        description: `Доля отмен: ${data.cancellationRate}%.`,
+        metric: `${data.cancellationRate}%`,
+        recommendation:
+          "Проверь остатки и сроки доставки. Отмены часто возникают из-за проблем с наличием.",
+      });
+    }
+
+    if (Number(data.stockCoverageDays) < 14 && Number(data.stockCoverageDays) > 0) {
+      actions.push({
+        id: "stock-coverage",
+        priority: "LOW",
+        title: "Проверить запас в днях",
+        description: `Текущий запас примерно на ${data.stockCoverageDays} дней.`,
+        metric: `${data.stockCoverageDays} дней`,
+        recommendation:
+          "Если товар продаётся стабильно, лучше пополнить остатки заранее.",
+      });
+    }
+
+    if (actions.length === 0) {
+      actions.push({
+        id: "all-good",
+        priority: "LOW",
+        title: "Критичных проблем не найдено",
+        description: "Основные показатели выглядят нормально.",
+        metric: "OK",
+        recommendation:
+          "Продолжай следить за остатками, отзывами и конверсией по каждому маркетплейсу.",
+      });
+    }
+
+    return actions.slice(0, 6);
+  }
+
+  private buildProblemProducts(
+    products: ProblemProductFromDatabase[],
+  ): ProblemProductDto[] {
+    return products
+      .map((product) => {
+        const views = product.analytics.reduce(
+          (sum, item) => sum + item.views,
+          0,
+        );
+        const ordersCount = product.analytics.reduce(
+          (sum, item) => sum + item.ordersCount,
+          0,
+        );
+        const conversionRate =
+          views > 0 ? ((ordersCount / views) * 100).toFixed(2) : "0.00";
+
+        const newReviews = product.reviews.filter(
+          (review) => review.status === "NEW",
+        ).length;
+
+        const lowRatingReviews = product.reviews.filter(
+          (review) => review.rating <= 3,
+        ).length;
+
+        const problems: string[] = [];
+
+        if (product.stock <= 10) {
+          problems.push("Низкий остаток");
+        }
+
+        if (product.rating && Number(product.rating.toString()) < 4.3) {
+          problems.push("Низкий рейтинг");
+        }
+
+        if (newReviews > 0) {
+          problems.push("Есть отзывы без ответа");
+        }
+
+        if (lowRatingReviews > 0) {
+          problems.push("Есть низкие оценки");
+        }
+
+        if (views > 100 && Number(conversionRate) < 0.2) {
+          problems.push("Низкая конверсия");
+        }
+
+        return {
+          id: product.id,
+          title: product.title,
+          sku: product.sku,
+          marketplaceName: product.marketplace.name,
+          marketplaceType: product.marketplace.type,
+          stock: product.stock,
+          rating: product.rating ? product.rating.toString() : null,
+          views,
+          ordersCount,
+          conversionRate,
+          problems,
+        };
+      })
+      .filter((product) => product.problems.length > 0)
+      .slice(0, 8);
+  }
+
   private buildMarketplaceRevenue(
     orders: OrderWithMarketplace[],
   ): MarketplaceRevenueDto[] {
-    const revenueByMarketplace = new Map<
-      string,
-      MarketplaceRevenueDto
-    >();
+    const revenueByMarketplace = new Map<string, MarketplaceRevenueDto>();
 
     for (const order of orders) {
       const current = revenueByMarketplace.get(order.marketplaceId);
@@ -292,6 +485,20 @@ export class AnalyticsService {
     status: string,
   ): number {
     return statusCounts.find((item) => item.status === status)?._count.id ?? 0;
+  }
+
+  private mapMarketplaceOption(marketplace: {
+    id: string;
+    name: string;
+    type: string;
+    status: string;
+  }): MarketplaceFilterOptionDto {
+    return {
+      id: marketplace.id,
+      name: marketplace.name,
+      type: marketplace.type,
+      status: marketplace.status,
+    };
   }
 
   private mapProductToAnalyticsProduct(

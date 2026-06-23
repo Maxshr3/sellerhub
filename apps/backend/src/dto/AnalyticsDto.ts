@@ -1,3 +1,9 @@
+export type DashboardAnalyticsQueryDto = {
+  marketplaceId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+};
+
 export type AnalyticsSummaryDto = {
   totalRevenue: string;
   totalOrders: number;
@@ -19,6 +25,13 @@ export type AnalyticsKpiCardDto = {
   interpretation: string;
 };
 
+export type MarketplaceFilterOptionDto = {
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+};
+
 export type MarketplaceRevenueDto = {
   marketplaceId: string;
   marketplaceName: string;
@@ -33,6 +46,29 @@ export type SalesFunnelDto = {
   deliveredOrders: number;
   returnedOrders: number;
   cancelledOrders: number;
+};
+
+export type SellerActionItemDto = {
+  id: string;
+  priority: "HIGH" | "MEDIUM" | "LOW";
+  title: string;
+  description: string;
+  metric: string;
+  recommendation: string;
+};
+
+export type ProblemProductDto = {
+  id: string;
+  title: string;
+  sku: string;
+  marketplaceName: string;
+  marketplaceType: string;
+  stock: number;
+  rating: string | null;
+  views: number;
+  ordersCount: number;
+  conversionRate: string;
+  problems: string[];
 };
 
 export type AnalyticsProductDto = {
@@ -53,10 +89,18 @@ export type TopProductDto = AnalyticsProductDto & {
 };
 
 export type DashboardAnalyticsDto = {
+  filters: {
+    marketplaceId: string | null;
+    dateFrom: string | null;
+    dateTo: string | null;
+  };
+  marketplaceOptions: MarketplaceFilterOptionDto[];
   summary: AnalyticsSummaryDto;
   kpiCards: AnalyticsKpiCardDto[];
+  actionItems: SellerActionItemDto[];
   marketplaceRevenue: MarketplaceRevenueDto[];
   salesFunnel: SalesFunnelDto;
+  problemProducts: ProblemProductDto[];
   lowStockProducts: AnalyticsProductDto[];
   topProducts: TopProductDto[];
 };

@@ -116,6 +116,11 @@ describe("Analytics API", () => {
   it("should return dashboard analytics", async () => {
     const response = await request(app).get("/api/analytics/dashboard");
 
+    expect(response.body.data.filters).toBeDefined();
+    expect(Array.isArray(response.body.data.marketplaceOptions)).toBe(true);
+    expect(Array.isArray(response.body.data.actionItems)).toBe(true);
+    expect(Array.isArray(response.body.data.problemProducts)).toBe(true);
+    expect(response.body.data.salesFunnel).toBeDefined();
     expect(response.status).toBe(200);
     expect(response.body.data.summary).toBeDefined();
     expect(response.body.data.summary.totalRevenue).toBeDefined();
@@ -133,5 +138,16 @@ describe("Analytics API", () => {
     );
     expect(Array.isArray(response.body.data.lowStockProducts)).toBe(true);
     expect(Array.isArray(response.body.data.topProducts)).toBe(true);
+
+    it("should return dashboard analytics with filters", async () => {
+  const dashboardResponse = await request(app).get(
+    "/api/analytics/dashboard?dateFrom=2026-06-01&dateTo=2026-06-30",
+  );
+
+  expect(dashboardResponse.status).toBe(200);
+  expect(dashboardResponse.body.data.filters.dateFrom).toBe("2026-06-01");
+  expect(dashboardResponse.body.data.filters.dateTo).toBe("2026-06-30");
+  expect(Array.isArray(dashboardResponse.body.data.kpiCards)).toBe(true);
+    });
   });
 });
