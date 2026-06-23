@@ -29,3 +29,21 @@ a {
 .app {
   min-height: 100vh;
 }
+
+.app-loading {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  align-content: center;
+  background: #f4f7fb;
+  color: #0f172a;
+}
+
+.app-loading strong {
+  font-size: 32px;
+}
+
+.app-loading p {
+  margin: 8px 0 0;
+  color: #64748b;
+}

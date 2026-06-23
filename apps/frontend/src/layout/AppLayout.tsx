@@ -4,20 +4,26 @@ import "./AppLayout.css";
 type AppLayoutProps = {
   children: ReactNode;
   currentPage: string;
+  userName: string;
   onPageChange: (page: string) => void;
+  onLogout: () => void;
 };
 
 const navItems = [
   { id: "dashboard", label: "Dashboard" },
+  { id: "marketplaces", label: "Marketplaces" },
   { id: "products", label: "Products" },
   { id: "reviews", label: "Reviews" },
   { id: "ai", label: "AI Assistant" },
+  { id: "profile", label: "Profile" },
 ];
 
 export function AppLayout({
   children,
   currentPage,
+  userName,
   onPageChange,
+  onLogout,
 }: AppLayoutProps) {
   return (
     <div className="layout">
@@ -54,7 +60,20 @@ export function AppLayout({
             <p className="topbar__eyebrow">Seller analytics platform</p>
             <h1>SellerHUB Dashboard</h1>
           </div>
-          <div className="topbar__user">Demo Seller</div>
+
+          <div className="topbar__actions">
+            <button
+              className="topbar__user"
+              onClick={() => onPageChange("profile")}
+              type="button"
+            >
+              {userName}
+            </button>
+
+            <button className="topbar__logout" onClick={onLogout} type="button">
+              Logout
+            </button>
+          </div>
         </header>
 
         <section className="content">{children}</section>

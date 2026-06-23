@@ -1,0 +1,230 @@
+.marketplaces-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.9fr) minmax(0, 1.1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.marketplace-panel {
+  padding: 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 10px 30px rgb(15 23 42 / 6%);
+}
+
+.marketplace-panel h3 {
+  margin: 0;
+}
+
+.marketplace-panel > p {
+  margin: 8px 0 18px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.provider-list {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.provider-card {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #f8fafc;
+  text-align: left;
+}
+
+.provider-card strong {
+  color: #0f172a;
+}
+
+.provider-card span {
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.provider-card small {
+  color: #0369a1;
+  font-weight: 800;
+}
+
+.provider-card--active {
+  border-color: #38bdf8;
+  background: #eff6ff;
+}
+
+.marketplace-form {
+  display: grid;
+  gap: 12px;
+}
+
+.marketplace-form label {
+  display: grid;
+  gap: 6px;
+}
+
+.marketplace-form label span {
+  color: #334155;
+  font-weight: 700;
+}
+
+.marketplace-form input {
+  padding: 12px 14px;
+  border: 1px solid #dbe3ef;
+  border-radius: 12px;
+  outline: none;
+}
+
+.marketplace-form input:focus {
+  border-color: #38bdf8;
+}
+
+.connections-list {
+  display: grid;
+  gap: 14px;
+}
+
+.connection-card {
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.connection-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: start;
+}
+
+.connection-card h4 {
+  margin: 0;
+}
+
+.connection-card p {
+  margin: 6px 0 0;
+  color: #64748b;
+}
+
+.connection-status {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.connection-status--connected {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.connection-status--disconnected {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.connection-status--needs_attention {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.connection-card dl {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.connection-card dl div {
+  display: grid;
+  gap: 4px;
+}
+
+.connection-card dt {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.connection-card dd {
+  margin: 0;
+  color: #0f172a;
+}
+
+.connection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.primary-button,
+.secondary-button {
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-weight: 800;
+}
+
+.primary-button {
+  border: 0;
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.secondary-button {
+  border: 1px solid #dbe3ef;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.sync-result {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.sync-result div {
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+  text-align: center;
+}
+
+.sync-result span {
+  display: block;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.sync-result strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 22px;
+}
+
+.success-text {
+  color: #047857;
+  font-weight: 800;
+}
+
+.error-text {
+  color: #dc2626;
+  font-weight: 800;
+}
+
+@media (max-width: 1100px) {
+  .marketplaces-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sync-result {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
