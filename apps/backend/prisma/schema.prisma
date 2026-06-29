@@ -51,16 +51,41 @@ enum AIRecommendationType {
   GENERAL
 }
 
+enum NotificationType {
+  LOW_STOCK
+  NEW_REVIEW
+  NEGATIVE_REVIEW
+  MARKETPLACE_SYNC
+  PROFILE
+  GENERAL
+}
+
+enum NotificationSeverity {
+  INFO
+  SUCCESS
+  WARNING
+  CRITICAL
+}
+
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
   passwordHash String
   name         String
+  avatarUrl    String?
+  companyName  String?
+  roleTitle    String?
+  phone        String?
+  theme        String   @default("SYSTEM")
+  accentColor  String   @default("#38bdf8")
+  emailReports Boolean  @default(true)
+  pushAlerts   Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   marketplaces Marketplace[]
   aiLogs       AIAssistantLog[]
+  notifications Notification[]
 
   @@map("users")
 }
@@ -182,4 +207,21 @@ model AIAssistantLog {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("ai_assistant_logs")
+}
+
+model Notification {
+  id        String               @id @default(uuid())
+  userId    String
+  type      NotificationType
+  severity  NotificationSeverity @default(INFO)
+  title     String
+  message   String
+  actionUrl String?
+  isRead    Boolean              @default(false)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
 }

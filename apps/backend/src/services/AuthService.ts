@@ -8,14 +8,9 @@ import {
 import { AuthRepository } from "../repositories/AuthRepository";
 import { createAccessToken } from "../utils/jwt";
 
-type UserFromDatabase = {
-  id: string;
-  email: string;
-  passwordHash: string;
-  name: string;
-  createdAt: Date;
-  updatedAt: Date;
-};
+type UserFromDatabase = NonNullable<
+  Awaited<ReturnType<AuthRepository["findUserByEmail"]>>
+>;
 
 export class AuthService {
   constructor(private readonly authRepository: AuthRepository) {}
@@ -35,12 +30,14 @@ export class AuthService {
       name: data.name,
     });
 
+    const accessToken = createAccessToken({
+      userId: user.id,
+      email: user.email,
+    });
+
     return {
       user: this.mapUserToResponse(user),
-      accessToken: createAccessToken({
-        userId: user.id,
-        email: user.email,
-      }),
+      accessToken,
     };
   }
 
@@ -60,12 +57,14 @@ export class AuthService {
       return null;
     }
 
+    const accessToken = createAccessToken({
+      userId: user.id,
+      email: user.email,
+    });
+
     return {
       user: this.mapUserToResponse(user),
-      accessToken: createAccessToken({
-        userId: user.id,
-        email: user.email,
-      }),
+      accessToken,
     };
   }
 
@@ -84,6 +83,14 @@ export class AuthService {
       id: user.id,
       email: user.email,
       name: user.name,
+      avatarUrl: user.avatarUrl,
+      companyName: user.companyName,
+      roleTitle: user.roleTitle,
+      phone: user.phone,
+      theme: user.theme,
+      accentColor: user.accentColor,
+      emailReports: user.emailReports,
+      pushAlerts: user.pushAlerts,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
     };

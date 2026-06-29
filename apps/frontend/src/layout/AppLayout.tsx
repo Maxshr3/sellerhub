@@ -5,12 +5,15 @@ type AppLayoutProps = {
   children: ReactNode;
   currentPage: string;
   userName: string;
+  avatarUrl: string | null;
+  accentColor: string;
   onPageChange: (page: string) => void;
   onLogout: () => void;
 };
 
 const navItems = [
   { id: "dashboard", label: "Dashboard" },
+  { id: "notifications", label: "Notifications" },
   { id: "marketplaces", label: "Marketplaces" },
   { id: "products", label: "Products" },
   { id: "reviews", label: "Reviews" },
@@ -22,6 +25,8 @@ export function AppLayout({
   children,
   currentPage,
   userName,
+  avatarUrl,
+  accentColor,
   onPageChange,
   onLogout,
 }: AppLayoutProps) {
@@ -65,8 +70,23 @@ export function AppLayout({
             <button
               className="topbar__user"
               onClick={() => onPageChange("profile")}
+              style={{
+                borderColor: accentColor,
+              }}
               type="button"
             >
+              <span
+                className="topbar__avatar"
+                style={{
+                  background: accentColor,
+                }}
+              >
+                {avatarUrl ? (
+                  <img alt="Аватар" src={avatarUrl} />
+                ) : (
+                  userName.slice(0, 1).toUpperCase()
+                )}
+              </span>
               {userName}
             </button>
 

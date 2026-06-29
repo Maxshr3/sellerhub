@@ -23,7 +23,11 @@ export class AuthRepository {
     name: string;
   }) {
     return prisma.user.create({
-      data,
+      data: {
+        email: data.email,
+        passwordHash: data.passwordHash,
+        name: data.name,
+      },
     });
   }
 }

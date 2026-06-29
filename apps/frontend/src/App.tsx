@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getCurrentUser } from "./api/authApi";
+import { NotificationsPage } from "./pages/NotificationsPage";
 import { AppLayout } from "./layout/AppLayout";
 import { AIAssistantPage } from "./pages/AIAssistantPage";
 import { AuthPage } from "./pages/AuthPage";
@@ -66,18 +67,25 @@ function App() {
 
   return (
     <AppLayout
-      currentPage={currentPage}
-      userName={user.name}
-      onPageChange={setCurrentPage}
-      onLogout={handleLogout}
-    >
+  currentPage={currentPage}
+  userName={user.name}
+  avatarUrl={user.avatarUrl}
+  accentColor={user.accentColor}
+  onPageChange={setCurrentPage}
+  onLogout={handleLogout}
+>
       {currentPage === "dashboard" ? <DashboardPage /> : null}
       {currentPage === "marketplaces" ? <MarketplacesPage /> : null}
       {currentPage === "products" ? <ProductsPage /> : null}
       {currentPage === "reviews" ? <ReviewsPage /> : null}
       {currentPage === "ai" ? <AIAssistantPage /> : null}
+      {currentPage === "notifications" ? <NotificationsPage /> : null}
       {currentPage === "profile" ? (
-        <ProfilePage user={user} onLogout={handleLogout} />
+        <ProfilePage
+  user={user}
+  onProfileUpdate={setUser}
+  onLogout={handleLogout}
+/>
       ) : null}
     </AppLayout>
   );

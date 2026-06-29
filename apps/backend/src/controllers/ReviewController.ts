@@ -119,7 +119,7 @@ export class ReviewController {
     });
   };
 
-    private parseReviewFilters(
+     private parseReviewFilters(
     query: Request["query"],
   ): ReviewListQueryDto | null {
     let status: ReviewStatusDto | undefined;
