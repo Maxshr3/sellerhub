@@ -3,16 +3,9 @@ import {
   CreateMarketplaceConnectionRequestDto,
   MarketplaceConnectionStatusDto,
 } from "../dto/MarketplaceDto";
-import {
-  NormalizedMarketplaceAnalytics,
-  NormalizedMarketplaceOrder,
-  NormalizedMarketplaceProduct,
-  NormalizedMarketplaceRecommendation,
-  NormalizedMarketplaceReview,
-} from "../integrations/marketplaces/MarketplaceConnectorTypes";
 
 export class MarketplaceRepository {
-  async findConnections(userId: string) {
+  async findMarketplacesByUserId(userId: string) {
     return prisma.marketplace.findMany({
       where: {
         userId,
@@ -23,39 +16,71 @@ export class MarketplaceRepository {
     });
   }
 
-  async findConnectionById(userId: string, id: string) {
-    return prisma.marketplace.findFirst({
+  async findMarketplaceById(id: string) {
+    return prisma.marketplace.findUnique({
       where: {
         id,
+      },
+    });
+  }
+
+  async findMarketplaceByUserIdAndId(userId: string, marketplaceId: string) {
+    return prisma.marketplace.findFirst({
+      where: {
+        id: marketplaceId,
         userId,
       },
     });
   }
 
-  async createConnection(
+  async findDuplicateMarketplace(
+    userId: string,
+    data: CreateMarketplaceConnectionRequestDto,
+  ) {
+    return prisma.marketplace.findFirst({
+      where: {
+        userId,
+        type: data.type,
+        name: {
+          equals: data.name.trim(),
+        },
+      },
+    });
+  }
+
+  async createMarketplace(
     userId: string,
     data: CreateMarketplaceConnectionRequestDto,
   ) {
     return prisma.marketplace.create({
       data: {
         userId,
-        name: data.name,
+        name: data.name.trim(),
         type: data.type,
-        externalAccountId: data.externalAccountId,
-        apiKey: data.apiKey,
         syncMode: data.syncMode ?? "MOCK",
+        externalAccountId: data.externalId?.trim() || null,
         status: "CONNECTED",
       },
     });
   }
 
-  async updateConnectionStatus(
-    id: string,
+  async updateMarketplaceStatus(
+    userId: string,
+    marketplaceId: string,
     status: MarketplaceConnectionStatusDto,
   ) {
+    const marketplace = await this.findMarketplaceByUserIdAndId(
+      userId,
+      marketplaceId,
+    );
+
+    if (!marketplace) {
+      return null;
+    }
+
     return prisma.marketplace.update({
       where: {
-        id,
+        id: marketplaceId,
       },
       data: {
         status,
@@ -63,157 +88,181 @@ export class MarketplaceRepository {
     });
   }
 
-  async updateLastSyncAt(id: string) {
+  async markMarketplaceSynced(marketplaceId: string) {
     return prisma.marketplace.update({
       where: {
-        id,
+        id: marketplaceId,
       },
       data: {
-        lastSyncAt: new Date(),
         status: "CONNECTED",
+        lastSyncAt: new Date(),
       },
     });
   }
 
-  async upsertProduct(
-    marketplaceId: string,
-    product: NormalizedMarketplaceProduct,
-  ) {
-    return prisma.product.upsert({
+  async findProductsByMarketplaceId(marketplaceId: string) {
+    return prisma.product.findMany({
       where: {
-        marketplaceId_sku: {
-          marketplaceId,
-          sku: product.sku,
-        },
-      },
-      update: {
-        title: product.title,
-        price: product.price,
-        stock: product.stock,
-        rating: product.rating,
-        isActive: product.isActive,
-      },
-      create: {
         marketplaceId,
-        title: product.title,
-        sku: product.sku,
-        price: product.price,
-        stock: product.stock,
-        rating: product.rating,
-        isActive: product.isActive,
+      },
+      include: {
+        reviews: true,
+        aiRecommendations: true,
       },
     });
   }
 
-  async upsertOrder(
-    marketplaceId: string,
-    productId: string,
-    order: NormalizedMarketplaceOrder,
-  ) {
-    return prisma.order.upsert({
-      where: {
-        marketplaceId_externalId: {
-          marketplaceId,
-          externalId: order.externalId,
+  async upsertDemoProducts(marketplaceId: string) {
+    const demoProducts = [
+      {
+        title: "Умная лампа Pro",
+        sku: `SMART-LAMP-${marketplaceId.slice(0, 4)}`,
+        price: "2990.00",
+        stock: 7,
+        rating: "4.20",
+      },
+      {
+        title: "Органайзер для кухни",
+        sku: `KITCHEN-BOX-${marketplaceId.slice(0, 4)}`,
+        price: "1490.00",
+        stock: 2,
+        rating: "3.80",
+      },
+      {
+        title: "Беспроводная зарядка Stand",
+        sku: `CHARGE-STAND-${marketplaceId.slice(0, 4)}`,
+        price: "2190.00",
+        stock: 24,
+        rating: "4.70",
+      },
+    ];
+
+    const syncedProducts = [];
+
+    for (const demoProduct of demoProducts) {
+      const product = await prisma.product.upsert({
+        where: {
+          marketplaceId_sku: {
+            marketplaceId,
+            sku: demoProduct.sku,
+          },
         },
-      },
-      update: {
-        productId,
-        status: order.status,
-        quantity: order.quantity,
-        totalPrice: order.totalPrice,
-        orderedAt: order.orderedAt,
-      },
-      create: {
-        marketplaceId,
-        productId,
-        externalId: order.externalId,
-        status: order.status,
-        quantity: order.quantity,
-        totalPrice: order.totalPrice,
-        orderedAt: order.orderedAt,
-      },
-    });
-  }
+        update: {
+          title: demoProduct.title,
+          price: demoProduct.price,
+          stock: demoProduct.stock,
+          rating: demoProduct.rating,
+          isActive: true,
+        },
+        create: {
+          marketplaceId,
+          title: demoProduct.title,
+          sku: demoProduct.sku,
+          price: demoProduct.price,
+          stock: demoProduct.stock,
+          rating: demoProduct.rating,
+          isActive: true,
+        },
+      });
 
-  async createReviewIfNotExists(
-    productId: string,
-    review: NormalizedMarketplaceReview,
-  ) {
-    const existingReview = await prisma.review.findFirst({
-      where: {
-        productId,
-        authorName: review.authorName,
-        text: review.text,
-      },
-    });
-
-    if (existingReview) {
-      return existingReview;
+      syncedProducts.push(product);
     }
 
-    return prisma.review.create({
-      data: {
-        productId,
-        authorName: review.authorName,
-        rating: review.rating,
-        text: review.text,
-        status: review.status,
-        answerText: review.answerText,
-      },
-    });
+    return syncedProducts;
   }
 
-  async upsertProductAnalytics(
-    productId: string,
-    analytics: NormalizedMarketplaceAnalytics,
-  ) {
-    return prisma.productAnalytics.upsert({
+  async createDemoReviews(productId: string) {
+    const existingReviewsCount = await prisma.review.count({
       where: {
-        productId_date: {
-          productId,
-          date: analytics.date,
-        },
-      },
-      update: {
-        views: analytics.views,
-        ordersCount: analytics.ordersCount,
-        revenue: analytics.revenue,
-        conversionRate: analytics.conversionRate,
-      },
-      create: {
         productId,
-        date: analytics.date,
-        views: analytics.views,
-        ordersCount: analytics.ordersCount,
-        revenue: analytics.revenue,
-        conversionRate: analytics.conversionRate,
       },
     });
+
+    if (existingReviewsCount > 0) {
+      return [];
+    }
+
+    return Promise.all([
+      prisma.review.create({
+        data: {
+          productId,
+          authorName: "Анна",
+          rating: 5,
+          text: "Товар понравился, всё пришло быстро.",
+          status: "NEW",
+        },
+      }),
+      prisma.review.create({
+        data: {
+          productId,
+          authorName: "Игорь",
+          rating: 2,
+          text: "Упаковка была повреждена, товар пришёл с царапиной.",
+          status: "NEW",
+        },
+      }),
+    ]);
   }
 
-  async createRecommendationIfNotExists(
-    productId: string,
-    recommendation: NormalizedMarketplaceRecommendation,
-  ) {
+  async createDemoAnalytics(productId: string) {
+    const existingAnalyticsCount = await prisma.productAnalytics.count({
+      where: {
+        productId,
+      },
+    });
+
+    if (existingAnalyticsCount > 0) {
+      return [];
+    }
+
+    const today = new Date();
+    const yesterday = new Date();
+
+    yesterday.setDate(today.getDate() - 1);
+
+    return Promise.all([
+      prisma.productAnalytics.create({
+        data: {
+          productId,
+          date: yesterday,
+          views: 1300,
+          ordersCount: 18,
+          revenue: "53820.00",
+          conversionRate: "1.38",
+        },
+      }),
+      prisma.productAnalytics.create({
+        data: {
+          productId,
+          date: today,
+          views: 1650,
+          ordersCount: 24,
+          revenue: "71760.00",
+          conversionRate: "1.45",
+        },
+      }),
+    ]);
+  }
+
+  async createDemoRecommendation(productId: string) {
     const existingRecommendation = await prisma.aIRecommendation.findFirst({
       where: {
         productId,
-        type: recommendation.type,
-        title: recommendation.title,
+        title: "Проверить упаковку и описание товара",
       },
     });
 
     if (existingRecommendation) {
-      return existingRecommendation;
+      return null;
     }
 
     return prisma.aIRecommendation.create({
       data: {
         productId,
-        type: recommendation.type,
-        title: recommendation.title,
-        content: recommendation.content,
+        type: "GENERAL",
+        title: "Проверить упаковку и описание товара",
+        content:
+          "У товара есть риск негативных отзывов. Рекомендуется добавить информацию об упаковке и проверить карточку.",
       },
     });
   }

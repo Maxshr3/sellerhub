@@ -3,13 +3,13 @@ import type {
   CreateMarketplaceConnectionRequest,
   MarketplaceConnectionResponse,
   MarketplaceConnectionsResponse,
-  MarketplaceConnectionStatus,
-  MarketplaceProvidersResponse,
+  MarketplaceProviderResponse,
   MarketplaceSyncResponse,
+  UpdateMarketplaceStatusRequest,
 } from "../types/marketplace";
 
 export function getMarketplaceProviders() {
-  return apiGet<MarketplaceProvidersResponse>("/marketplaces/providers");
+  return apiGet<MarketplaceProviderResponse>("/marketplaces/providers");
 }
 
 export function getMarketplaceConnections() {
@@ -27,14 +27,12 @@ export function createMarketplaceConnection(
 
 export function updateMarketplaceConnectionStatus(
   id: string,
-  status: MarketplaceConnectionStatus,
+  data: UpdateMarketplaceStatusRequest,
 ) {
-  return apiPatch<MarketplaceConnectionResponse, { status: string }>(
-    `/marketplaces/connections/${id}/status`,
-    {
-      status,
-    },
-  );
+  return apiPatch<
+    MarketplaceConnectionResponse,
+    UpdateMarketplaceStatusRequest
+  >(`/marketplaces/connections/${id}/status`, data);
 }
 
 export function syncMarketplaceConnection(id: string) {

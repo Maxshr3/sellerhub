@@ -1,47 +1,50 @@
 import {
   CreateMarketplaceConnectionRequestDto,
   MarketplaceConnectionResponseDto,
-  MarketplaceConnectionStatusDto,
   MarketplaceProviderDto,
-  MarketplaceSyncResultDto,
+  MarketplaceSyncReportDto,
+  MarketplaceSyncResponseDto,
+  MarketplaceTypeDto,
+  UpdateMarketplaceStatusRequestDto,
 } from "../dto/MarketplaceDto";
-import { MarketplaceConnectorFactory } from "../integrations/marketplaces/MarketplaceConnectorFactory";
 import { MarketplaceRepository } from "../repositories/MarketplaceRepository";
 
-type MarketplaceFromDatabase = Awaited<
-  ReturnType<MarketplaceRepository["findConnections"]>
->[number];
+type MarketplaceFromDatabase = NonNullable<
+  Awaited<ReturnType<MarketplaceRepository["findMarketplaceById"]>>
+>;
 
 export class MarketplaceService {
-  private readonly connectorFactory = new MarketplaceConnectorFactory();
-
   constructor(private readonly marketplaceRepository: MarketplaceRepository) {}
 
   getProviders(): MarketplaceProviderDto[] {
     return [
       {
         type: "YANDEX_MARKET",
-        title: "Яндекс Маркет",
-        description:
-          "Подключение магазина Яндекс Маркета для загрузки товаров, заказов, остатков и отчётов.",
-        isAvailableInDemo: true,
-        authType: "API_KEY",
+        name: "Яндекс Маркет",
+        description: "Товары, отзывы, остатки и аналитика из Яндекс Маркета.",
+        isAvailable: true,
+        syncMode: "MOCK",
       },
       {
         type: "WILDBERRIES",
-        title: "Wildberries",
-        description:
-          "Подключение кабинета Wildberries для загрузки продаж, остатков, заказов и отзывов.",
-        isAvailableInDemo: true,
-        authType: "API_KEY",
+        name: "Wildberries",
+        description: "Тестовая интеграция для товаров и отзывов Wildberries.",
+        isAvailable: true,
+        syncMode: "MOCK",
       },
       {
         type: "AVITO",
-        title: "Avito",
-        description:
-          "Подключение Avito для работы с объявлениями, статистикой и обращениями покупателей.",
-        isAvailableInDemo: true,
-        authType: "API_KEY",
+        name: "Avito",
+        description: "Тестовая интеграция для объявлений и сообщений Avito.",
+        isAvailable: true,
+        syncMode: "MOCK",
+      },
+      {
+        type: "OZON",
+        name: "Ozon",
+        description: "Заготовка интеграции для будущего расширения.",
+        isAvailable: false,
+        syncMode: "MOCK",
       },
     ];
   }
@@ -49,196 +52,236 @@ export class MarketplaceService {
   async getConnections(
     userId: string,
   ): Promise<MarketplaceConnectionResponseDto[]> {
-    const connections = await this.marketplaceRepository.findConnections(userId);
+    const marketplaces =
+      await this.marketplaceRepository.findMarketplacesByUserId(userId);
 
-    return connections.map((connection) =>
-      this.mapConnectionToResponse(connection),
+    return marketplaces.map((marketplace) =>
+      this.mapMarketplaceToResponse(marketplace),
     );
   }
 
   async createConnection(
     userId: string,
     data: CreateMarketplaceConnectionRequestDto,
-  ): Promise<MarketplaceConnectionResponseDto> {
-    const connection = await this.marketplaceRepository.createConnection(
+  ): Promise<
+    | {
+        status: "created";
+        data: MarketplaceConnectionResponseDto;
+      }
+    | {
+        status: "duplicate";
+        data: MarketplaceConnectionResponseDto;
+      }
+  > {
+    const duplicateMarketplace =
+      await this.marketplaceRepository.findDuplicateMarketplace(userId, data);
+
+    if (duplicateMarketplace) {
+      return {
+        status: "duplicate",
+        data: this.mapMarketplaceToResponse(duplicateMarketplace),
+      };
+    }
+
+    const marketplace = await this.marketplaceRepository.createMarketplace(
       userId,
       data,
     );
 
-    return this.mapConnectionToResponse(connection);
+    return {
+      status: "created",
+      data: this.mapMarketplaceToResponse(marketplace),
+    };
   }
 
   async updateConnectionStatus(
     userId: string,
-    id: string,
-    status: MarketplaceConnectionStatusDto,
+    marketplaceId: string,
+    data: UpdateMarketplaceStatusRequestDto,
   ): Promise<MarketplaceConnectionResponseDto | null> {
-    const existingConnection =
-      await this.marketplaceRepository.findConnectionById(userId, id);
+    const marketplace = await this.marketplaceRepository.updateMarketplaceStatus(
+      userId,
+      marketplaceId,
+      data.status,
+    );
 
-    if (!existingConnection) {
+    if (!marketplace) {
       return null;
     }
 
-    const updatedConnection =
-      await this.marketplaceRepository.updateConnectionStatus(id, status);
-
-    return this.mapConnectionToResponse(updatedConnection);
+    return this.mapMarketplaceToResponse(marketplace);
   }
 
   async syncConnection(
     userId: string,
-    id: string,
-  ): Promise<MarketplaceSyncResultDto | null> {
-    const connection = await this.marketplaceRepository.findConnectionById(
-      userId,
-      id,
-    );
+    marketplaceId: string,
+  ): Promise<MarketplaceSyncResponseDto | null> {
+    const marketplace =
+      await this.marketplaceRepository.findMarketplaceByUserIdAndId(
+        userId,
+        marketplaceId,
+      );
 
-    if (!connection) {
+    if (!marketplace) {
       return null;
     }
 
-    const connector = this.connectorFactory.createConnector(connection.type);
+    const beforeProducts =
+      await this.marketplaceRepository.findProductsByMarketplaceId(marketplaceId);
 
-    if (!connector) {
-      const updatedConnection =
-        await this.marketplaceRepository.updateConnectionStatus(
-          id,
-          "NEEDS_ATTENTION",
-        );
+    const syncedProducts =
+      await this.marketplaceRepository.upsertDemoProducts(marketplaceId);
 
-      return {
-        connection: this.mapConnectionToResponse(updatedConnection),
-        source: connection.type,
-        syncMode: connection.syncMode,
-        imported: {
-          products: 0,
-          orders: 0,
-          reviews: 0,
-          analyticsRecords: 0,
-          recommendations: 0,
-        },
-        message:
-          "Для этого маркетплейса пока нет mock-коннектора. Подключение требует внимания.",
-      };
-    }
+    let reviewsFound = 0;
+    let recommendationsCreated = 0;
 
-    const syncData = await connector.fetchData();
-
-    const productIdBySku = new Map<string, string>();
-
-    for (const product of syncData.products) {
-      const savedProduct = await this.marketplaceRepository.upsertProduct(
-        connection.id,
-        product,
+    for (const product of syncedProducts) {
+      const reviews = await this.marketplaceRepository.createDemoReviews(
+        product.id,
       );
+      const analytics = await this.marketplaceRepository.createDemoAnalytics(
+        product.id,
+      );
+      const recommendation =
+        await this.marketplaceRepository.createDemoRecommendation(product.id);
 
-      productIdBySku.set(product.sku, savedProduct.id);
-    }
+      reviewsFound += reviews.length;
 
-    let importedOrders = 0;
-    let importedReviews = 0;
-    let importedAnalytics = 0;
-    let importedRecommendations = 0;
-
-    for (const order of syncData.orders) {
-      const productId = productIdBySku.get(order.productSku);
-
-      if (!productId) {
-        continue;
+      if (recommendation) {
+        recommendationsCreated += 1;
       }
 
-      await this.marketplaceRepository.upsertOrder(
-        connection.id,
-        productId,
-        order,
-      );
-
-      importedOrders += 1;
+      void analytics;
     }
 
-    for (const review of syncData.reviews) {
-      const productId = productIdBySku.get(review.productSku);
+    const afterProducts =
+      await this.marketplaceRepository.findProductsByMarketplaceId(marketplaceId);
 
-      if (!productId) {
-        continue;
-      }
+    const syncedMarketplace =
+      await this.marketplaceRepository.markMarketplaceSynced(marketplaceId);
 
-      await this.marketplaceRepository.createReviewIfNotExists(
-        productId,
-        review,
-      );
-
-      importedReviews += 1;
-    }
-
-    for (const analytics of syncData.analytics) {
-      const productId = productIdBySku.get(analytics.productSku);
-
-      if (!productId) {
-        continue;
-      }
-
-      await this.marketplaceRepository.upsertProductAnalytics(
-        productId,
-        analytics,
-      );
-
-      importedAnalytics += 1;
-    }
-
-    for (const recommendation of syncData.recommendations) {
-      const productId = productIdBySku.get(recommendation.productSku);
-
-      if (!productId) {
-        continue;
-      }
-
-      await this.marketplaceRepository.createRecommendationIfNotExists(
-        productId,
-        recommendation,
-      );
-
-      importedRecommendations += 1;
-    }
-
-    const updatedConnection = await this.marketplaceRepository.updateLastSyncAt(
-      connection.id,
-    );
+    const report = this.buildSyncReport({
+      marketplace: syncedMarketplace,
+      beforeProductsCount: beforeProducts.length,
+      afterProducts,
+      reviewsFound,
+      recommendationsCreated,
+    });
 
     return {
-      connection: this.mapConnectionToResponse(updatedConnection),
-      source: syncData.source,
-      syncMode: connection.syncMode,
-      imported: {
-        products: syncData.products.length,
-        orders: importedOrders,
-        reviews: importedReviews,
-        analyticsRecords: importedAnalytics,
-        recommendations: importedRecommendations,
-      },
-      message:
-        "Mock-синхронизация завершена. Данные маркетплейса импортированы в SellerHUB.",
+      data: this.mapMarketplaceToResponse(syncedMarketplace),
+      report,
     };
   }
 
-  private mapConnectionToResponse(
-    connection: MarketplaceFromDatabase,
+  private buildSyncReport(data: {
+    marketplace: MarketplaceFromDatabase;
+    beforeProductsCount: number;
+    afterProducts: Awaited<
+      ReturnType<MarketplaceRepository["findProductsByMarketplaceId"]>
+    >;
+    reviewsFound: number;
+    recommendationsCreated: number;
+  }): MarketplaceSyncReportDto {
+    const productsUpdated = data.afterProducts.length;
+    const lowStockProducts = data.afterProducts.filter(
+      (product) => product.stock <= 10,
+    );
+    const negativeReviews = data.afterProducts.flatMap((product) =>
+      product.reviews.filter((review) => review.rating <= 3),
+    );
+
+    const changes: MarketplaceSyncReportDto["changes"] = [
+      {
+        id: "system-sync-complete",
+        type: "SYSTEM",
+        title: "Синхронизация завершена",
+        description: `SellerHUB обновил данные магазина ${data.marketplace.name}.`,
+        severity: "SUCCESS",
+      },
+      {
+        id: "products-updated",
+        type: "PRODUCT",
+        title: "Товары обновлены",
+        description: `Обновлено товаров: ${productsUpdated}. Новых товаров: ${Math.max(
+          0,
+          productsUpdated - data.beforeProductsCount,
+        )}.`,
+        severity: "INFO",
+      },
+    ];
+
+    if (data.reviewsFound > 0) {
+      changes.push({
+        id: "reviews-found",
+        type: "REVIEW",
+        title: "Найдены новые отзывы",
+        description: `После синхронизации найдено отзывов: ${data.reviewsFound}.`,
+        severity: "INFO",
+      });
+    }
+
+    if (negativeReviews.length > 0) {
+      changes.push({
+        id: "negative-reviews",
+        type: "REVIEW",
+        title: "Есть негативные отзывы",
+        description: `${negativeReviews.length} отзывов имеют оценку 1–3. Лучше ответить на них быстрее.`,
+        severity: "CRITICAL",
+      });
+    }
+
+    if (lowStockProducts.length > 0) {
+      changes.push({
+        id: "low-stock-products",
+        type: "STOCK",
+        title: "Есть товары с низким остатком",
+        description: `${lowStockProducts.length} товаров имеют остаток 10 шт. или меньше.`,
+        severity: "WARNING",
+      });
+    }
+
+    if (data.recommendationsCreated > 0) {
+      changes.push({
+        id: "recommendations-created",
+        type: "RECOMMENDATION",
+        title: "Созданы рекомендации",
+        description: `SellerHUB создал рекомендаций: ${data.recommendationsCreated}.`,
+        severity: "SUCCESS",
+      });
+    }
+
+    return {
+      marketplaceId: data.marketplace.id,
+      marketplaceName: data.marketplace.name,
+      marketplaceType: data.marketplace.type as MarketplaceTypeDto,
+      syncedAt: new Date().toISOString(),
+      summary: {
+        productsUpdated,
+        reviewsFound: data.reviewsFound,
+        negativeReviews: negativeReviews.length,
+        lowStockProducts: lowStockProducts.length,
+        recommendationsCreated: data.recommendationsCreated,
+      },
+      changes,
+    };
+  }
+
+  private mapMarketplaceToResponse(
+    marketplace: MarketplaceFromDatabase,
   ): MarketplaceConnectionResponseDto {
     return {
-      id: connection.id,
-      name: connection.name,
-      type: connection.type,
-      externalAccountId: connection.externalAccountId,
-      status: connection.status,
-      syncMode: connection.syncMode,
-      lastSyncAt: connection.lastSyncAt
-        ? connection.lastSyncAt.toISOString()
+      id: marketplace.id,
+      name: marketplace.name,
+      type: marketplace.type as MarketplaceTypeDto,
+      status: marketplace.status,
+      syncMode: marketplace.syncMode,
+      externalId: marketplace.externalAccountId,
+      lastSyncAt: marketplace.lastSyncAt
+        ? marketplace.lastSyncAt.toISOString()
         : null,
-      hasApiKey: Boolean(connection.apiKey),
-      createdAt: connection.createdAt.toISOString(),
-      updatedAt: connection.updatedAt.toISOString(),
+      createdAt: marketplace.createdAt.toISOString(),
+      updatedAt: marketplace.updatedAt.toISOString(),
     };
   }
 }

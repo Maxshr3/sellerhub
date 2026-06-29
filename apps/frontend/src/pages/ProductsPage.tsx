@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { getMarketplaceConnections } from "../api/marketplacesApi";
 import {
@@ -12,6 +12,11 @@ import { EmptyState } from "../components/EmptyState";
 import { LoadingState } from "../components/LoadingState";
 import { PageSection } from "../components/PageSection";
 import { StatusBadge } from "../components/StatusBadge";
+import {
+  buildProductIntelligence,
+  simulateProductScenario,
+} from "../utils/productIntelligence";
+import { getUniqueMarketplaceOptions } from "../utils/marketplaceOptions";
 import type { MarketplaceConnection } from "../types/marketplace";
 import type {
   CreateProductRequest,
@@ -59,6 +64,28 @@ export function ProductsPage({
   const [isSaving, setIsSaving] = useState(false);
   const [errorText, setErrorText] = useState("");
   const [successText, setSuccessText] = useState("");
+
+
+  const [priceChangePercent, setPriceChangePercent] = useState(0);
+const [stockChange, setStockChange] = useState(0);
+
+const uniqueMarketplaces = useMemo(
+  () => getUniqueMarketplaceOptions(marketplaces),
+  [marketplaces],
+);
+
+const productIntelligence = useMemo(
+  () => (selectedProduct ? buildProductIntelligence(selectedProduct) : null),
+  [selectedProduct],
+);
+
+const productScenario = useMemo(
+  () =>
+    selectedProduct
+      ? simulateProductScenario(selectedProduct, priceChangePercent, stockChange)
+      : null,
+  [selectedProduct, priceChangePercent, stockChange],
+);
 
   function buildFilters(): ProductFilters {
     return {
@@ -139,13 +166,13 @@ export function ProductsPage({
   }
 
   function resetForm() {
-    setForm({
-      ...emptyForm,
-      marketplaceId: marketplaces[0]?.id ?? "",
-    });
-    setFormMode("create");
-    setEditingProductId("");
-  }
+  setForm({
+    ...emptyForm,
+    marketplaceId: uniqueMarketplaces[0]?.id ?? "",
+  });
+  setFormMode("create");
+  setEditingProductId("");
+}
 
   function handleProductSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -244,8 +271,10 @@ export function ProductsPage({
 
     getProductById(productId)
       .then((response) => {
-        setSelectedProduct(response.data);
-      })
+  setSelectedProduct(response.data);
+  setPriceChangePercent(0);
+  setStockChange(0);
+})
       .catch(() => {
         setErrorText("Не удалось загрузить карточку товара.");
       });
@@ -316,7 +345,7 @@ export function ProductsPage({
                   onChange={(event) => setMarketplaceId(event.target.value)}
                 >
                   <option value="">Все маркетплейсы</option>
-                  {marketplaces.map((marketplace) => (
+                  {uniqueMarketplaces.map((marketplace) => (
                     <option key={marketplace.id} value={marketplace.id}>
                       {marketplace.name} · {marketplace.type}
                     </option>
@@ -373,11 +402,11 @@ export function ProductsPage({
                     handleFormChange("marketplaceId", event.target.value)
                   }
                 >
-                  {marketplaces.length === 0 ? (
+                  {uniqueMarketplaces.length === 0 ? (
                     <option value="">Нет подключений</option>
                   ) : null}
 
-                  {marketplaces.map((marketplace) => (
+                  {uniqueMarketplaces.map((marketplace) => (
                     <option key={marketplace.id} value={marketplace.id}>
                       {marketplace.name} · {marketplace.type}
                     </option>
@@ -599,6 +628,156 @@ export function ProductsPage({
                 ×
               </button>
             </header>
+
+{productIntelligence && productScenario ? (
+  <div className="product-intelligence">
+    <section className="product-health-card">
+      <div className="product-health-card__score">
+        <span>Health Score</span>
+        <strong>{productIntelligence.healthScore}/100</strong>
+        <StatusBadge tone={productIntelligence.healthTone}>
+          {productIntelligence.healthLabel}
+        </StatusBadge>
+      </div>
+
+      <div className="product-health-card__content">
+        <h3>{productIntelligence.mainRisk}</h3>
+        <p>{productIntelligence.recommendedAction}</p>
+
+        <div className="product-health-factors">
+          {productIntelligence.factors.map((factor) => (
+            <article
+              className={`product-health-factor product-health-factor--${factor.type}`}
+              key={factor.title}
+            >
+              <strong>{factor.title}</strong>
+              <span>{factor.description}</span>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section className="product-intelligence-grid">
+      <article className="product-intelligence-card">
+        <span>Lost Revenue Detector</span>
+        <strong>{productIntelligence.lostRevenue.total} ₽</strong>
+        <p>{productIntelligence.lostRevenue.message}</p>
+
+        <dl>
+          <div>
+            <dt>Риск из-за остатка</dt>
+            <dd>{productIntelligence.lostRevenue.stockRisk} ₽</dd>
+          </div>
+          <div>
+            <dt>Риск из-за конверсии</dt>
+            <dd>{productIntelligence.lostRevenue.conversionRisk} ₽</dd>
+          </div>
+        </dl>
+      </article>
+
+      <article className="product-intelligence-card">
+        <span>Stock Planner</span>
+        <strong>
+          {productIntelligence.stockPlanner.daysLeft === null
+            ? "Недостаточно данных"
+            : `${productIntelligence.stockPlanner.daysLeft} дн.`}
+        </strong>
+        <p>{productIntelligence.stockPlanner.message}</p>
+
+        <dl>
+          <div>
+            <dt>Средние продажи в день</dt>
+            <dd>{productIntelligence.stockPlanner.averageDailyOrders}</dd>
+          </div>
+          <div>
+            <dt>Рекомендовано пополнить</dt>
+            <dd>{productIntelligence.stockPlanner.recommendedRestock} шт.</dd>
+          </div>
+        </dl>
+      </article>
+
+      <article className="product-intelligence-card product-simulator-card">
+        <span>What-if Simulator</span>
+        <h3>Сценарий изменения цены и остатка</h3>
+
+        <label>
+          <span>Изменение цены: {priceChangePercent}%</span>
+          <input
+            min="-30"
+            max="30"
+            value={priceChangePercent}
+            onChange={(event) =>
+              setPriceChangePercent(Number(event.target.value))
+            }
+            type="range"
+          />
+        </label>
+
+        <label>
+          <span>Изменение остатка: {stockChange} шт.</span>
+          <input
+            min="-50"
+            max="150"
+            value={stockChange}
+            onChange={(event) => setStockChange(Number(event.target.value))}
+            type="range"
+          />
+        </label>
+
+        <dl>
+          <div>
+            <dt>Новая цена</dt>
+            <dd>{productScenario.projectedPrice} ₽</dd>
+          </div>
+          <div>
+            <dt>Новый остаток</dt>
+            <dd>{productScenario.projectedStock} шт.</dd>
+          </div>
+          <div>
+            <dt>Прогноз конверсии</dt>
+            <dd>{productScenario.projectedConversion}%</dd>
+          </div>
+          <div>
+            <dt>Прогноз выручки</dt>
+            <dd>{productScenario.projectedRevenue} ₽</dd>
+          </div>
+        </dl>
+
+        <StatusBadge tone={productScenario.revenueDelta >= 0 ? "success" : "danger"}>
+          {productScenario.revenueDelta >= 0
+            ? `+${productScenario.revenueDelta} ₽`
+            : `${productScenario.revenueDelta} ₽`}
+        </StatusBadge>
+
+        <p>{productScenario.riskLabel}</p>
+        <p>{productScenario.recommendation}</p>
+      </article>
+
+      <article className="product-intelligence-card">
+        <span>Product Timeline</span>
+        <h3>История событий</h3>
+
+        <div className="product-timeline">
+          {productIntelligence.timeline.map((event) => (
+            <div className="product-timeline-item" key={event.id}>
+              <div />
+              <article>
+                <time>{new Date(event.date).toLocaleString("ru-RU")}</time>
+                <strong>{event.title}</strong>
+                <p>{event.description}</p>
+              </article>
+            </div>
+          ))}
+        </div>
+
+        {productIntelligence.timeline.length === 0 ? (
+          <p>Событий по товару пока нет.</p>
+        ) : null}
+      </article>
+    </section>
+  </div>
+) : null}
 
             <div className="product-modal__summary">
               <article>

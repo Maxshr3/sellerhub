@@ -360,3 +360,194 @@
 .problem-product-card__header .dashboard-card-actions {
   flex-shrink: 0;
 }
+
+.executive-summary-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(420px, 1.15fr);
+  gap: 18px;
+}
+
+.executive-summary-hero {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  padding: 22px;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top left, rgb(186 230 253 / 50%), transparent 36%),
+    #0f172a;
+  color: #ffffff;
+}
+
+.executive-summary-hero > span {
+  color: #bae6fd;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.executive-summary-hero strong {
+  font-size: 48px;
+  line-height: 1;
+}
+
+.executive-summary-hero p {
+  margin: 0;
+  color: #dbeafe;
+  line-height: 1.55;
+}
+
+.executive-summary-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.executive-summary-metrics article {
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 10px 30px rgb(15 23 42 / 6%);
+}
+
+.executive-summary-metrics span {
+  display: block;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.executive-summary-metrics strong {
+  display: block;
+  margin-top: 8px;
+  color: #0f172a;
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.dashboard-insights-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.dashboard-insight-card {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.dashboard-insight-card--success {
+  background: #ecfdf5;
+}
+
+.dashboard-insight-card--warning {
+  background: #fff7ed;
+}
+
+.dashboard-insight-card--danger {
+  background: #fef2f2;
+}
+
+.dashboard-insight-card--info {
+  background: #eff6ff;
+}
+
+.dashboard-insight-card p {
+  margin: 0;
+  color: #334155;
+  line-height: 1.5;
+}
+
+.dashboard-health-products {
+  display: grid;
+  gap: 12px;
+}
+
+.dashboard-health-product-card {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 10px 30px rgb(15 23 42 / 6%);
+}
+
+.dashboard-health-product-card__score {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.dashboard-health-product-card__score strong {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.dashboard-health-product-card__score span {
+  color: #bae6fd;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.dashboard-health-product-card__content {
+  display: grid;
+  gap: 10px;
+}
+
+.dashboard-health-product-card__content h3 {
+  margin: 0;
+  color: #0f172a;
+}
+
+.dashboard-health-product-card__content span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.dashboard-health-product-card__content p {
+  margin: 0;
+  color: #334155;
+  line-height: 1.45;
+}
+
+.dashboard-health-product-card__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 1100px) {
+  .executive-summary-grid,
+  .dashboard-health-product-card {
+    grid-template-columns: 1fr;
+  }
+
+  .executive-summary-metrics,
+  .dashboard-insights-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-health-product-card__score {
+    width: 100%;
+  }
+}
+
+@media (max-width: 700px) {
+  .executive-summary-metrics,
+  .dashboard-insights-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import {
   createMarketplaceConnection,
@@ -7,89 +7,100 @@ import {
   syncMarketplaceConnection,
   updateMarketplaceConnectionStatus,
 } from "../api/marketplacesApi";
+import { AlertMessage } from "../components/AlertMessage";
+import { EmptyState } from "../components/EmptyState";
+import { LoadingState } from "../components/LoadingState";
 import { PageSection } from "../components/PageSection";
+import { StatusBadge } from "../components/StatusBadge";
 import type {
   MarketplaceConnection,
   MarketplaceProvider,
-  MarketplaceSyncResult,
+  MarketplaceSyncReport,
   MarketplaceType,
 } from "../types/marketplace";
+import { getUniqueMarketplaceOptions } from "../utils/marketplaceOptions";
 import "./MarketplacesPage.css";
 
-const marketplaceLabels: Record<MarketplaceType, string> = {
-  YANDEX_MARKET: "Яндекс Маркет",
-  WILDBERRIES: "Wildberries",
-  AVITO: "Avito",
-  OZON: "Ozon",
-  OTHER: "Other",
+const statusLabels = {
+  CONNECTED: "Подключён",
+  DISCONNECTED: "Отключён",
+  NEEDS_ATTENTION: "Требует внимания",
 };
+
+function getStatusTone(status: MarketplaceConnection["status"]) {
+  if (status === "CONNECTED") {
+    return "success";
+  }
+
+  if (status === "NEEDS_ATTENTION") {
+    return "warning";
+  }
+
+  return "neutral";
+}
+
+function getChangeTone(
+  severity: MarketplaceSyncReport["changes"][number]["severity"],
+) {
+  if (severity === "SUCCESS") {
+    return "success";
+  }
+
+  if (severity === "WARNING") {
+    return "warning";
+  }
+
+  if (severity === "CRITICAL") {
+    return "danger";
+  }
+
+  return "info";
+}
 
 export function MarketplacesPage() {
   const [providers, setProviders] = useState<MarketplaceProvider[]>([]);
   const [connections, setConnections] = useState<MarketplaceConnection[]>([]);
   const [selectedType, setSelectedType] =
     useState<MarketplaceType>("YANDEX_MARKET");
-  const [connectionName, setConnectionName] = useState("Мой Яндекс Маркет");
-  const [externalAccountId, setExternalAccountId] = useState("DEMO-ACCOUNT-001");
-  const [apiKey, setApiKey] = useState("demo-api-key");
-  const [syncingId, setSyncingId] = useState("");
-  const [lastSyncResult, setLastSyncResult] =
-    useState<MarketplaceSyncResult | null>(null);
+  const [storeName, setStoreName] = useState("");
+  const [externalId, setExternalId] = useState("");
+  const [syncReport, setSyncReport] = useState<MarketplaceSyncReport | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(true);
+  const [syncingId, setSyncingId] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [errorText, setErrorText] = useState("");
   const [successText, setSuccessText] = useState("");
 
-  function loadConnections() {
-    getMarketplaceConnections()
-      .then((response) => {
-        setConnections(response.data);
-      })
-      .catch(() => {
-        setErrorText("Не удалось загрузить подключённые маркетплейсы.");
-      });
-  }
+  const uniqueConnections = useMemo(
+    () => getUniqueMarketplaceOptions(connections),
+    [connections],
+  );
 
   useEffect(() => {
     Promise.all([getMarketplaceProviders(), getMarketplaceConnections()])
       .then(([providersResponse, connectionsResponse]) => {
         setProviders(providersResponse.data);
         setConnections(connectionsResponse.data);
+
+        if (providersResponse.data.length > 0) {
+          setSelectedType(providersResponse.data[0].type);
+        }
       })
       .catch(() => {
-        setErrorText(
-          "Не удалось загрузить маркетплейсы. Проверь backend и авторизацию.",
-        );
+        setErrorText("Не удалось загрузить маркетплейсы.");
       })
       .finally(() => {
         setIsLoading(false);
       });
   }, []);
 
-  function handleProviderSelect(type: MarketplaceType) {
-    setSelectedType(type);
-
-    if (type === "YANDEX_MARKET") {
-      setConnectionName("Мой Яндекс Маркет");
-      setExternalAccountId("YANDEX-DEMO-001");
-    }
-
-    if (type === "WILDBERRIES") {
-      setConnectionName("Мой Wildberries");
-      setExternalAccountId("WB-DEMO-001");
-    }
-
-    if (type === "AVITO") {
-      setConnectionName("Мой Avito");
-      setExternalAccountId("AVITO-DEMO-001");
-    }
-  }
-
   function handleCreateConnection(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (connectionName.trim().length < 2) {
-      setErrorText("Название подключения должно содержать минимум 2 символа.");
+    if (storeName.trim().length < 2) {
+      setErrorText("Название магазина должно содержать минимум 2 символа.");
       setSuccessText("");
       return;
     }
@@ -97,123 +108,146 @@ export function MarketplacesPage() {
     setIsCreating(true);
     setErrorText("");
     setSuccessText("");
-    setLastSyncResult(null);
+    setSyncReport(null);
 
     createMarketplaceConnection({
-      name: connectionName.trim(),
+      name: storeName.trim(),
       type: selectedType,
-      externalAccountId: externalAccountId.trim() || undefined,
-      apiKey: apiKey.trim() || undefined,
       syncMode: "MOCK",
+      externalId: externalId.trim() || null,
     })
-      .then(() => {
-        setSuccessText("Маркетплейс подключён в demo-режиме.");
-        loadConnections();
+      .then((response) => {
+        setConnections((currentConnections) => [
+          response.data,
+          ...currentConnections,
+        ]);
+        setStoreName("");
+        setExternalId("");
+        setSuccessText("Маркетплейс подключён.");
       })
-      .catch(() => {
-        setErrorText("Не удалось подключить маркетплейс.");
+      .catch((error) => {
+        if (String(error).includes("409")) {
+          setErrorText("Такой магазин уже подключён. Дубликат не создан.");
+        } else {
+          setErrorText("Не удалось подключить маркетплейс.");
+        }
       })
       .finally(() => {
         setIsCreating(false);
       });
   }
 
-  function handleSync(connectionId: string) {
-    setSyncingId(connectionId);
+  function handleSync(connection: MarketplaceConnection) {
+    setSyncingId(connection.id);
     setErrorText("");
     setSuccessText("");
-    setLastSyncResult(null);
+    setSyncReport(null);
 
-    syncMarketplaceConnection(connectionId)
+    syncMarketplaceConnection(connection.id)
       .then((response) => {
-        setLastSyncResult(response.data);
-        setSuccessText("Синхронизация завершена.");
-        loadConnections();
+        setConnections((currentConnections) =>
+          currentConnections.map((currentConnection) =>
+            currentConnection.id === response.data.id
+              ? response.data
+              : currentConnection,
+          ),
+        );
+        setSyncReport(response.report);
+        setSuccessText(`Синхронизация ${response.data.name} завершена.`);
       })
       .catch(() => {
-        setErrorText("Не удалось синхронизировать маркетплейс.");
+        setErrorText("Не удалось выполнить синхронизацию.");
       })
       .finally(() => {
         setSyncingId("");
       });
   }
 
-  function handleDisable(connectionId: string) {
+  function handleToggleStatus(connection: MarketplaceConnection) {
+    const nextStatus =
+      connection.status === "CONNECTED" ? "DISCONNECTED" : "CONNECTED";
+
     setErrorText("");
     setSuccessText("");
 
-    updateMarketplaceConnectionStatus(connectionId, "DISCONNECTED")
-      .then(() => {
-        setSuccessText("Подключение отключено.");
-        loadConnections();
+    updateMarketplaceConnectionStatus(connection.id, {
+      status: nextStatus,
+    })
+      .then((response) => {
+        setConnections((currentConnections) =>
+          currentConnections.map((currentConnection) =>
+            currentConnection.id === response.data.id
+              ? response.data
+              : currentConnection,
+          ),
+        );
+        setSuccessText(
+          nextStatus === "CONNECTED"
+            ? "Подключение включено."
+            : "Подключение отключено.",
+        );
       })
       .catch(() => {
         setErrorText("Не удалось изменить статус подключения.");
       });
   }
 
-  if (isLoading) {
-    return <p>Загрузка маркетплейсов...</p>;
-  }
-
   return (
     <>
       <PageSection
         title="Маркетплейсы"
-        description="Подключение кабинетов маркетплейсов и mock-синхронизация данных в SellerHUB."
+        description="Подключения магазинов и синхронизация данных SellerHUB."
       >
-        {errorText ? <p className="error-text">{errorText}</p> : null}
-        {successText ? <p className="success-text">{successText}</p> : null}
+        <div className="page-message-stack">
+          {errorText ? <AlertMessage type="error">{errorText}</AlertMessage> : null}
+          {successText ? (
+            <AlertMessage type="success">{successText}</AlertMessage>
+          ) : null}
+        </div>
 
-        <div className="marketplaces-grid">
-          <section className="marketplace-panel">
-            <h3>Доступные подключения</h3>
-            <p>
-              В demo-режиме реальные API-ключи не проверяются, но архитектура
-              уже готова к замене mock-коннекторов на реальные API.
-            </p>
+        {isLoading ? (
+          <LoadingState title="Загрузка маркетплейсов..." rows={4} />
+        ) : null}
 
-            <div className="provider-list">
-              {providers.map((provider) => (
-                <button
-                  className={
-                    selectedType === provider.type
-                      ? "provider-card provider-card--active"
-                      : "provider-card"
+        {!isLoading ? (
+          <div className="marketplaces-layout">
+            <form
+              className="marketplace-connect-card"
+              onSubmit={handleCreateConnection}
+            >
+              <h3>Подключить магазин</h3>
+
+              <label>
+                <span>Маркетплейс</span>
+                <select
+                  value={selectedType}
+                  onChange={(event) =>
+                    setSelectedType(event.target.value as MarketplaceType)
                   }
-                  key={provider.type}
-                  onClick={() => handleProviderSelect(provider.type)}
-                  type="button"
                 >
-                  <strong>{provider.title}</strong>
-                  <span>{provider.description}</span>
-                  <small>Auth: {provider.authType}</small>
-                </button>
-              ))}
-            </div>
+                  {providers.map((provider) => (
+                    <option key={provider.type} value={provider.type}>
+                      {provider.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
 
-            <form className="marketplace-form" onSubmit={handleCreateConnection}>
               <label>
-                <span>Название подключения</span>
+                <span>Название магазина</span>
                 <input
-                  value={connectionName}
-                  onChange={(event) => setConnectionName(event.target.value)}
+                  value={storeName}
+                  onChange={(event) => setStoreName(event.target.value)}
+                  placeholder="Например: SellerHUB Demo Store"
                 />
               </label>
 
               <label>
-                <span>External account ID</span>
+                <span>Внешний ID магазина</span>
                 <input
-                  value={externalAccountId}
-                  onChange={(event) => setExternalAccountId(event.target.value)}
-                />
-              </label>
-
-              <label>
-                <span>API key / demo key</span>
-                <input
-                  value={apiKey}
-                  onChange={(event) => setApiKey(event.target.value)}
+                  value={externalId}
+                  onChange={(event) => setExternalId(event.target.value)}
+                  placeholder="Можно оставить пустым"
                 />
               </label>
 
@@ -222,119 +256,174 @@ export function MarketplacesPage() {
                 disabled={isCreating}
                 type="submit"
               >
-                {isCreating
-                  ? "Подключаю..."
-                  : `Подключить ${marketplaceLabels[selectedType]}`}
+                {isCreating ? "Подключаю..." : "Подключить"}
               </button>
             </form>
-          </section>
 
-          <section className="marketplace-panel">
-            <h3>Подключённые маркетплейсы</h3>
+            <section className="marketplace-providers-card">
+              <h3>Доступные интеграции</h3>
 
-            <div className="connections-list">
-              {connections.map((connection) => (
-                <article className="connection-card" key={connection.id}>
-                  <div className="connection-card__header">
+              <div className="provider-list">
+                {providers.map((provider) => (
+                  <article className="provider-card" key={provider.type}>
                     <div>
-                      <h4>{connection.name}</h4>
-                      <p>
-                        {marketplaceLabels[connection.type]} ·{" "}
-                        {connection.syncMode}
-                      </p>
+                      <h4>{provider.name}</h4>
+                      <p>{provider.description}</p>
                     </div>
 
-                    <span
-                      className={`connection-status connection-status--${connection.status.toLowerCase()}`}
+                    <StatusBadge
+                      tone={provider.isAvailable ? "success" : "neutral"}
                     >
-                      {connection.status}
-                    </span>
+                      {provider.isAvailable ? "Доступно" : "Скоро"}
+                    </StatusBadge>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </div>
+        ) : null}
+      </PageSection>
+
+      {!isLoading ? (
+        <PageSection
+          title="Подключённые магазины"
+          description="Здесь можно синхронизировать данные или отключить магазин."
+        >
+          {uniqueConnections.length > 0 ? (
+            <div className="marketplace-connections-grid">
+              {uniqueConnections.map((connection) => (
+                <article
+                  className="marketplace-connection-card"
+                  key={connection.id}
+                >
+                  <div className="marketplace-connection-card__header">
+                    <div>
+                      <h3>{connection.name}</h3>
+                      <span>{connection.type}</span>
+                    </div>
+
+                    <StatusBadge tone={getStatusTone(connection.status)}>
+                      {statusLabels[connection.status]}
+                    </StatusBadge>
                   </div>
 
                   <dl>
                     <div>
+                      <dt>Sync mode</dt>
+                      <dd>{connection.syncMode}</dd>
+                    </div>
+                    <div>
                       <dt>External ID</dt>
-                      <dd>{connection.externalAccountId ?? "—"}</dd>
+                      <dd>{connection.externalId ?? "—"}</dd>
                     </div>
                     <div>
-                      <dt>API key</dt>
-                      <dd>{connection.hasApiKey ? "Добавлен" : "Нет"}</dd>
-                    </div>
-                    <div>
-                      <dt>Последняя синхронизация</dt>
+                      <dt>Last sync</dt>
                       <dd>
                         {connection.lastSyncAt
                           ? new Date(connection.lastSyncAt).toLocaleString(
                               "ru-RU",
                             )
-                          : "Ещё не запускалась"}
+                          : "Синхронизации ещё не было"}
                       </dd>
                     </div>
                   </dl>
 
-                  <div className="connection-actions">
+                  <div className="marketplace-connection-card__actions">
                     <button
                       className="primary-button"
-                      disabled={syncingId === connection.id}
-                      onClick={() => handleSync(connection.id)}
+                      disabled={
+                        syncingId === connection.id ||
+                        connection.status === "DISCONNECTED"
+                      }
+                      onClick={() => handleSync(connection)}
                       type="button"
                     >
                       {syncingId === connection.id
-                        ? "Синхронизация..."
-                        : "Синхронизировать"}
+                        ? "Синхронизирую..."
+                        : "Sync"}
                     </button>
 
                     <button
                       className="secondary-button"
-                      onClick={() => handleDisable(connection.id)}
+                      onClick={() => handleToggleStatus(connection)}
                       type="button"
                     >
-                      Отключить
+                      {connection.status === "CONNECTED"
+                        ? "Отключить"
+                        : "Включить"}
                     </button>
                   </div>
                 </article>
               ))}
-
-              {connections.length === 0 ? (
-                <div className="empty-state">
-                  <strong>Маркетплейсы ещё не подключены</strong>
-                  <p>Выбери площадку слева и создай demo-подключение.</p>
-                </div>
-              ) : null}
             </div>
-          </section>
-        </div>
-      </PageSection>
+          ) : (
+            <EmptyState
+              title="Магазины ещё не подключены"
+              description="Подключи тестовый магазин, чтобы SellerHUB мог загрузить товары, отзывы и аналитику."
+            />
+          )}
+        </PageSection>
+      ) : null}
 
-      {lastSyncResult ? (
+      {syncReport ? (
         <PageSection
-          title="Результат синхронизации"
-          description="Какие данные были импортированы из mock-коннектора."
+          title="Marketplace Sync Report"
+          description="Что изменилось после последней синхронизации."
         >
-          <div className="sync-result">
-            <div>
-              <span>Источник</span>
-              <strong>{marketplaceLabels[lastSyncResult.source]}</strong>
+          <div className="sync-report">
+            <header className="sync-report__header">
+              <div>
+                <span>{syncReport.marketplaceType}</span>
+                <h3>{syncReport.marketplaceName}</h3>
+                <p>
+                  Синхронизация завершена{" "}
+                  {new Date(syncReport.syncedAt).toLocaleString("ru-RU")}
+                </p>
+              </div>
+
+              <StatusBadge tone="success">Sync complete</StatusBadge>
+            </header>
+
+            <div className="sync-report-summary">
+              <article>
+                <span>Товары</span>
+                <strong>{syncReport.summary.productsUpdated}</strong>
+              </article>
+
+              <article>
+                <span>Отзывы</span>
+                <strong>{syncReport.summary.reviewsFound}</strong>
+              </article>
+
+              <article>
+                <span>Негатив</span>
+                <strong>{syncReport.summary.negativeReviews}</strong>
+              </article>
+
+              <article>
+                <span>Низкий остаток</span>
+                <strong>{syncReport.summary.lowStockProducts}</strong>
+              </article>
+
+              <article>
+                <span>Рекомендации</span>
+                <strong>{syncReport.summary.recommendationsCreated}</strong>
+              </article>
             </div>
-            <div>
-              <span>Товары</span>
-              <strong>{lastSyncResult.imported.products}</strong>
-            </div>
-            <div>
-              <span>Заказы</span>
-              <strong>{lastSyncResult.imported.orders}</strong>
-            </div>
-            <div>
-              <span>Отзывы</span>
-              <strong>{lastSyncResult.imported.reviews}</strong>
-            </div>
-            <div>
-              <span>Аналитика</span>
-              <strong>{lastSyncResult.imported.analyticsRecords}</strong>
-            </div>
-            <div>
-              <span>AI-рекомендации</span>
-              <strong>{lastSyncResult.imported.recommendations}</strong>
+
+            <div className="sync-report-changes">
+              {syncReport.changes.map((change) => (
+                <article className="sync-report-change-card" key={change.id}>
+                  <StatusBadge tone={getChangeTone(change.severity)}>
+                    {change.type}
+                  </StatusBadge>
+
+                  <div>
+                    <h4>{change.title}</h4>
+                    <p>{change.description}</p>
+                  </div>
+                </article>
+              ))}
             </div>
           </div>
         </PageSection>

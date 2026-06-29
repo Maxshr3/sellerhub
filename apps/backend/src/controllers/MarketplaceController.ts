@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import {
   CreateMarketplaceConnectionRequestDto,
   MarketplaceConnectionStatusDto,
-  MarketplaceSyncModeDto,
   MarketplaceTypeDto,
   UpdateMarketplaceStatusRequestDto,
 } from "../dto/MarketplaceDto";
@@ -16,19 +15,13 @@ type MarketplaceParams = {
 export class MarketplaceController {
   constructor(private readonly marketplaceService: MarketplaceService) {}
 
-  getProviders = async (_req: Request, res: Response) => {
-    const providers = this.marketplaceService.getProviders();
-
+  getProviders = (_req: Request, res: Response) => {
     return res.status(200).json({
-      data: providers,
-      total: providers.length,
+      data: this.marketplaceService.getProviders(),
     });
   };
 
-  getConnections = async (
-    _req: Request,
-    res: Response<unknown, AuthLocals>,
-  ) => {
+  getConnections = async (_req: Request, res: Response<unknown, AuthLocals>) => {
     const authUser = res.locals.user;
 
     if (!authUser) {
@@ -43,7 +36,6 @@ export class MarketplaceController {
 
     return res.status(200).json({
       data: connections,
-      total: connections.length,
     });
   };
 
@@ -59,48 +51,33 @@ export class MarketplaceController {
       });
     }
 
-    const { name, type, externalAccountId, apiKey, syncMode } = req.body;
+    const validationError = this.validateCreateBody(req.body);
 
-    if (typeof name !== "string" || name.trim().length < 2) {
+    if (validationError) {
       return res.status(400).json({
-        message: "name is required and must contain at least 2 characters",
+        message: validationError,
       });
     }
 
-    const parsedType = this.parseMarketplaceType(type);
-
-    if (!parsedType) {
-      return res.status(400).json({
-        message: "Invalid marketplace type",
-        allowedTypes: ["YANDEX_MARKET", "WILDBERRIES", "AVITO", "OZON", "OTHER"],
-      });
-    }
-
-    const parsedSyncMode = this.parseSyncMode(syncMode);
-
-    if (parsedSyncMode === null) {
-      return res.status(400).json({
-        message: "Invalid sync mode",
-        allowedSyncModes: ["MOCK", "API"],
-      });
-    }
-
-    const connection = await this.marketplaceService.createConnection(
+    const result = await this.marketplaceService.createConnection(
       authUser.userId,
       {
-        name: name.trim(),
-        type: parsedType,
-        externalAccountId:
-          typeof externalAccountId === "string"
-            ? externalAccountId.trim()
-            : undefined,
-        apiKey: typeof apiKey === "string" ? apiKey.trim() : undefined,
-        syncMode: parsedSyncMode ?? "MOCK",
+        name: req.body.name.trim(),
+        type: req.body.type,
+        syncMode: req.body.syncMode ?? "MOCK",
+        externalId: req.body.externalId ?? null,
       },
     );
 
+    if (result.status === "duplicate") {
+      return res.status(409).json({
+        message: "Marketplace connection already exists",
+        data: result.data,
+      });
+    }
+
     return res.status(201).json({
-      data: connection,
+      data: result.data,
     });
   };
 
@@ -116,20 +93,20 @@ export class MarketplaceController {
       });
     }
 
-    const { id } = req.params;
-    const status = this.parseConnectionStatus(req.body.status);
+    const status = this.parseStatus(req.body.status);
 
     if (!status) {
       return res.status(400).json({
-        message: "Invalid marketplace connection status",
-        allowedStatuses: ["CONNECTED", "DISCONNECTED", "NEEDS_ATTENTION"],
+        message: "Invalid marketplace status",
       });
     }
 
     const connection = await this.marketplaceService.updateConnectionStatus(
       authUser.userId,
-      id,
-      status,
+      req.params.id,
+      {
+        status,
+      },
     );
 
     if (!connection) {
@@ -155,11 +132,9 @@ export class MarketplaceController {
       });
     }
 
-    const { id } = req.params;
-
     const result = await this.marketplaceService.syncConnection(
       authUser.userId,
-      id,
+      req.params.id,
     );
 
     if (!result) {
@@ -168,34 +143,42 @@ export class MarketplaceController {
       });
     }
 
-    return res.status(200).json({
-      data: result,
-    });
+    return res.status(200).json(result);
   };
 
-  private parseMarketplaceType(value: unknown): MarketplaceTypeDto | null {
-    if (value === "YANDEX_MARKET") return "YANDEX_MARKET";
+  private validateCreateBody(
+    body: CreateMarketplaceConnectionRequestDto,
+  ): string | null {
+    if (typeof body.name !== "string" || body.name.trim().length < 2) {
+      return "name must contain at least 2 characters";
+    }
+
+    if (!this.parseType(body.type)) {
+      return "Invalid marketplace type";
+    }
+
+    if (
+      body.syncMode !== undefined &&
+      body.syncMode !== "MOCK" &&
+      body.syncMode !== "API"
+    ) {
+      return "Invalid sync mode";
+    }
+
+    return null;
+  }
+
+  private parseType(value: unknown): MarketplaceTypeDto | null {
     if (value === "WILDBERRIES") return "WILDBERRIES";
-    if (value === "AVITO") return "AVITO";
     if (value === "OZON") return "OZON";
+    if (value === "YANDEX_MARKET") return "YANDEX_MARKET";
+    if (value === "AVITO") return "AVITO";
     if (value === "OTHER") return "OTHER";
 
     return null;
   }
 
-  private parseSyncMode(
-    value: unknown,
-  ): MarketplaceSyncModeDto | undefined | null {
-    if (value === undefined) return undefined;
-    if (value === "MOCK") return "MOCK";
-    if (value === "API") return "API";
-
-    return null;
-  }
-
-  private parseConnectionStatus(
-    value: unknown,
-  ): MarketplaceConnectionStatusDto | null {
+  private parseStatus(value: unknown): MarketplaceConnectionStatusDto | null {
     if (value === "CONNECTED") return "CONNECTED";
     if (value === "DISCONNECTED") return "DISCONNECTED";
     if (value === "NEEDS_ATTENTION") return "NEEDS_ATTENTION";

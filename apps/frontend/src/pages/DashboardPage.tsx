@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { getDashboardAnalytics } from "../api/analyticsApi";
 import { AlertMessage } from "../components/AlertMessage";
@@ -6,6 +6,8 @@ import { EmptyState } from "../components/EmptyState";
 import { LoadingState } from "../components/LoadingState";
 import { PageSection } from "../components/PageSection";
 import { StatusBadge } from "../components/StatusBadge";
+import { buildDashboardIntelligence } from "../utils/dashboardIntelligence";
+import { getUniqueMarketplaceOptions } from "../utils/marketplaceOptions";
 import "./DashboardPage.css";
 
 type DashboardData = Awaited<ReturnType<typeof getDashboardAnalytics>>["data"];
@@ -39,6 +41,16 @@ export function DashboardPage({ onOpenProduct }: DashboardPageProps) {
   const [dateTo, setDateTo] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [errorText, setErrorText] = useState("");
+
+  const uniqueMarketplaceOptions = useMemo(
+    () => getUniqueMarketplaceOptions(dashboard?.marketplaceOptions ?? []),
+    [dashboard?.marketplaceOptions],
+  );
+
+  const dashboardIntelligence = useMemo(
+    () => (dashboard ? buildDashboardIntelligence(dashboard) : null),
+    [dashboard],
+  );
 
   function loadDashboard(filters?: {
     marketplaceId?: string;
@@ -106,7 +118,7 @@ export function DashboardPage({ onOpenProduct }: DashboardPageProps) {
               >
                 <option value="">Все маркетплейсы</option>
 
-                {dashboard?.marketplaceOptions.map((marketplace) => (
+                {uniqueMarketplaceOptions.map((marketplace) => (
                   <option key={marketplace.id} value={marketplace.id}>
                     {marketplace.name} · {marketplace.type}
                   </option>
@@ -161,8 +173,132 @@ export function DashboardPage({ onOpenProduct }: DashboardPageProps) {
         </PageSection>
       ) : null}
 
-      {!isLoading && dashboard ? (
+      {!isLoading && dashboard && dashboardIntelligence ? (
         <>
+          <PageSection
+            title="Executive Summary"
+            description="Короткая управленческая сводка: что происходит с магазином и на что обратить внимание в первую очередь."
+          >
+            <div className="executive-summary-grid">
+              <article className="executive-summary-hero">
+                <span>Среднее здоровье товаров</span>
+                <strong>{dashboardIntelligence.averageHealthScore}/100</strong>
+                <StatusBadge tone={dashboardIntelligence.averageHealthTone}>
+                  {dashboardIntelligence.averageHealthScore >= 75
+                    ? "Стабильно"
+                    : dashboardIntelligence.averageHealthScore >= 45
+                      ? "Нужен контроль"
+                      : "Высокий риск"}
+                </StatusBadge>
+                <p>
+                  SellerHUB оценивает здоровье товаров по остаткам, рейтингу,
+                  конверсии, продажам и найденным проблемам.
+                </p>
+              </article>
+
+              <div className="executive-summary-metrics">
+                <article>
+                  <span>Потенциально упущено</span>
+                  <strong>{dashboardIntelligence.totalLostRevenue} ₽</strong>
+                </article>
+
+                <article>
+                  <span>В зоне риска</span>
+                  <strong>{dashboardIntelligence.highRiskProductsCount}</strong>
+                </article>
+
+                <article>
+                  <span>Требуют внимания</span>
+                  <strong>{dashboardIntelligence.mediumRiskProductsCount}</strong>
+                </article>
+
+                <article>
+                  <span>Низкий остаток</span>
+                  <strong>{dashboardIntelligence.lowStockProductsCount}</strong>
+                </article>
+
+                <article>
+                  <span>Срочные действия</span>
+                  <strong>{dashboardIntelligence.urgentActionsCount}</strong>
+                </article>
+
+                <article>
+                  <span>Лучший канал</span>
+                  <strong>{dashboardIntelligence.bestMarketplaceName}</strong>
+                </article>
+              </div>
+            </div>
+
+            <div className="dashboard-insights-grid">
+              {dashboardIntelligence.insights.map((insight) => (
+                <article
+                  className={`dashboard-insight-card dashboard-insight-card--${insight.tone}`}
+                  key={insight.id}
+                >
+                  <StatusBadge tone={insight.tone}>{insight.title}</StatusBadge>
+                  <p>{insight.description}</p>
+                </article>
+              ))}
+            </div>
+          </PageSection>
+
+          <PageSection
+            title="Товары с самым низким Health Score"
+            description="Это товары, которые SellerHUB советует проверить первыми."
+          >
+            {dashboardIntelligence.healthProducts.length > 0 ? (
+              <div className="dashboard-health-products">
+                {dashboardIntelligence.healthProducts.map((product) => (
+                  <article className="dashboard-health-product-card" key={product.id}>
+                    <div className="dashboard-health-product-card__score">
+                      <strong>{product.healthScore}</strong>
+                      <span>/100</span>
+                    </div>
+
+                    <div className="dashboard-health-product-card__content">
+                      <div>
+                        <h3>{product.title}</h3>
+                        <span>
+                          {product.marketplaceName} · {product.sku}
+                        </span>
+                      </div>
+
+                      <div className="dashboard-health-product-card__badges">
+                        <StatusBadge tone={product.healthTone}>
+                          {product.healthLabel}
+                        </StatusBadge>
+
+                        <StatusBadge
+                          tone={product.lostRevenue > 0 ? "warning" : "success"}
+                        >
+                          {`${product.lostRevenue} ₽ риска`}
+                        </StatusBadge>
+                      </div>
+
+                      <p>
+                        <strong>{product.mainProblem}:</strong>{" "}
+                        {product.recommendation}
+                      </p>
+                    </div>
+
+                    <button
+                      className="secondary-button"
+                      onClick={() => onOpenProduct(product.id)}
+                      type="button"
+                    >
+                      Открыть
+                    </button>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                title="Нет товаров для диагностики"
+                description="После синхронизации маркетплейсов SellerHUB покажет товары с самым низким Health Score."
+              />
+            )}
+          </PageSection>
+
           <PageSection
             title="Ключевые показатели"
             description="Основные метрики селлера. Подсказки объясняют, как считается каждый показатель."
@@ -288,29 +424,29 @@ export function DashboardPage({ onOpenProduct }: DashboardPageProps) {
                 <div className="compact-product-list">
                   {dashboard.lowStockProducts.map((product) => (
                     <article className="compact-product-card" key={product.id}>
-  <div>
-    <h3>{product.title}</h3>
-    <span>
-      {product.marketplaceName} · {product.sku}
-    </span>
-  </div>
+                      <div>
+                        <h3>{product.title}</h3>
+                        <span>
+                          {product.marketplaceName} · {product.sku}
+                        </span>
+                      </div>
 
-  <div className="dashboard-card-actions">
-    <StatusBadge
-      tone={product.stock <= 3 ? "danger" : "warning"}
-    >
-      {`${product.stock} шт.`}
-    </StatusBadge>
+                      <div className="dashboard-card-actions">
+                        <StatusBadge
+                          tone={product.stock <= 3 ? "danger" : "warning"}
+                        >
+                          {`${product.stock} шт.`}
+                        </StatusBadge>
 
-    <button
-      className="secondary-button"
-      onClick={() => onOpenProduct(product.id)}
-      type="button"
-    >
-      Открыть
-    </button>
-  </div>
-</article>
+                        <button
+                          className="secondary-button"
+                          onClick={() => onOpenProduct(product.id)}
+                          type="button"
+                        >
+                          Открыть
+                        </button>
+                      </div>
+                    </article>
                   ))}
                 </div>
               ) : (
@@ -328,46 +464,58 @@ export function DashboardPage({ onOpenProduct }: DashboardPageProps) {
           >
             {dashboard.problemProducts.length > 0 ? (
               <div className="problem-products-grid">
-                {dashboard.problemProducts.map((product) => (
-                  <article className="problem-product-card" key={product.id}>
-                    <div className="problem-product-card__header">
-                      <div>
-                        <h3>{product.title}</h3>
-                        <span>
-                          {product.marketplaceName} · {product.sku}
-                        </span>
+                {dashboard.problemProducts.map((product) => {
+                  const healthProduct = dashboardIntelligence.healthProducts.find(
+                    (item) => item.id === product.id,
+                  );
+
+                  return (
+                    <article className="problem-product-card" key={product.id}>
+                      <div className="problem-product-card__header">
+                        <div>
+                          <h3>{product.title}</h3>
+                          <span>
+                            {product.marketplaceName} · {product.sku}
+                          </span>
+                        </div>
+
+                        <div className="dashboard-card-actions">
+                          {healthProduct ? (
+                            <StatusBadge tone={healthProduct.healthTone}>
+                              {`${healthProduct.healthScore}/100`}
+                            </StatusBadge>
+                          ) : null}
+
+                          <StatusBadge tone="warning">
+                            {`${product.problems.length} проблем`}
+                          </StatusBadge>
+
+                          <button
+                            className="secondary-button"
+                            onClick={() => onOpenProduct(product.id)}
+                            type="button"
+                          >
+                            Открыть
+                          </button>
+                        </div>
                       </div>
 
-                      <div className="dashboard-card-actions">
-  <StatusBadge tone="warning">
-    {`${product.problems.length} проблем`}
-  </StatusBadge>
+                      <div className="problem-product-card__metrics">
+                        <span>Остаток: {product.stock}</span>
+                        <span>Рейтинг: {product.rating ?? "—"}</span>
+                        <span>Просмотры: {product.views}</span>
+                        <span>Заказы: {product.ordersCount}</span>
+                        <span>Конверсия: {product.conversionRate}%</span>
+                      </div>
 
-  <button
-    className="secondary-button"
-    onClick={() => onOpenProduct(product.id)}
-    type="button"
-  >
-    Открыть
-  </button>
-</div>
-                    </div>
-
-                    <div className="problem-product-card__metrics">
-                      <span>Остаток: {product.stock}</span>
-                      <span>Рейтинг: {product.rating ?? "—"}</span>
-                      <span>Просмотры: {product.views}</span>
-                      <span>Заказы: {product.ordersCount}</span>
-                      <span>Конверсия: {product.conversionRate}%</span>
-                    </div>
-
-                    <ul>
-                      {product.problems.map((problem) => (
-                        <li key={problem}>{problem}</li>
-                      ))}
-                    </ul>
-                  </article>
-                ))}
+                      <ul>
+                        {product.problems.map((problem) => (
+                          <li key={problem}>{problem}</li>
+                        ))}
+                      </ul>
+                    </article>
+                  );
+                })}
               </div>
             ) : (
               <EmptyState
@@ -422,14 +570,14 @@ export function DashboardPage({ onOpenProduct }: DashboardPageProps) {
                         </td>
                         <td>{product.rating ?? "—"}</td>
                         <td>
-  <button
-    className="secondary-button"
-    onClick={() => onOpenProduct(product.id)}
-    type="button"
-  >
-    Открыть
-  </button>
-</td>
+                          <button
+                            className="secondary-button"
+                            onClick={() => onOpenProduct(product.id)}
+                            type="button"
+                          >
+                            Открыть
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
