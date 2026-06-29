@@ -7,7 +7,11 @@ import {
   getProducts,
   updateProduct,
 } from "../api/productsApi";
+import { AlertMessage } from "../components/AlertMessage";
+import { EmptyState } from "../components/EmptyState";
+import { LoadingState } from "../components/LoadingState";
 import { PageSection } from "../components/PageSection";
+import { StatusBadge } from "../components/StatusBadge";
 import type { MarketplaceConnection } from "../types/marketplace";
 import type {
   CreateProductRequest,
@@ -139,7 +143,7 @@ export function ProductsPage() {
     event.preventDefault();
 
     if (!form.marketplaceId) {
-      setErrorText("Сначала подключи маркетплейс на странице Marketplaces.");
+      setErrorText("Сначала подключи маркетплейс на странице Profile → Маркетплейсы.");
       setSuccessText("");
       return;
     }
@@ -257,11 +261,15 @@ export function ProductsPage() {
   return (
     <>
       <PageSection
-        title="Products Management"
+        title="Products"
         description="Управление товарами: фильтры, создание, редактирование, остатки и статус карточек."
       >
-        {errorText ? <p className="error-text">{errorText}</p> : null}
-        {successText ? <p className="success-text">{successText}</p> : null}
+        <div className="page-message-stack">
+          {errorText ? <AlertMessage type="error">{errorText}</AlertMessage> : null}
+          {successText ? (
+            <AlertMessage type="success">{successText}</AlertMessage>
+          ) : null}
+        </div>
 
         <div className="products-layout">
           <section className="products-panel">
@@ -455,179 +463,232 @@ export function ProductsPage() {
       </PageSection>
 
       <PageSection title="Список товаров">
-        {isLoading ? <p>Загрузка товаров...</p> : null}
+        {isLoading ? <LoadingState title="Загрузка товаров..." rows={5} /> : null}
 
-        <div className="products-table-card">
-          <table>
-            <thead>
-              <tr>
-                <th>Товар</th>
-                <th>Маркетплейс</th>
-                <th>Цена</th>
-                <th>Остаток</th>
-                <th>Рейтинг</th>
-                <th>Статус</th>
-                <th>Действия</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {products.map((product) => (
-                <tr key={product.id}>
-                  <td>
-                    <strong>{product.title}</strong>
-                    <br />
-                    <span className="muted-text">{product.sku}</span>
-                  </td>
-                  <td>
-                    {product.marketplaceName}
-                    <br />
-                    <span className="muted-text">{product.marketplaceType}</span>
-                  </td>
-                  <td>{product.price} ₽</td>
-                  <td>
-                    <span
-                      className={
-                        product.stock <= 10
-                          ? "stock-badge stock-badge--low"
-                          : "stock-badge"
-                      }
-                    >
-                      {product.stock}
-                    </span>
-                  </td>
-                  <td>{product.rating ?? "—"}</td>
-                  <td>
-                    <span
-                      className={
-                        product.isActive
-                          ? "product-status product-status--active"
-                          : "product-status"
-                      }
-                    >
-                      {product.isActive ? "Активен" : "Неактивен"}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="product-actions">
-                      <button
-                        className="secondary-button"
-                        onClick={() => handleOpenDetails(product.id)}
-                        type="button"
-                      >
-                        Детали
-                      </button>
-                      <button
-                        className="secondary-button"
-                        onClick={() => handleEdit(product)}
-                        type="button"
-                      >
-                        Изменить
-                      </button>
-                      <button
-                        className="secondary-button"
-                        onClick={() => handleQuickToggleActive(product)}
-                        type="button"
-                      >
-                        {product.isActive ? "Скрыть" : "Активировать"}
-                      </button>
-                    </div>
-                  </td>
+        {!isLoading && products.length > 0 ? (
+          <div className="products-table-card">
+            <table>
+              <thead>
+                <tr>
+                  <th>Товар</th>
+                  <th>Маркетплейс</th>
+                  <th>Цена</th>
+                  <th>Остаток</th>
+                  <th>Рейтинг</th>
+                  <th>Статус</th>
+                  <th>Действия</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
 
-          {!isLoading && products.length === 0 ? (
-            <div className="empty-state">
-              <strong>Товары не найдены</strong>
-              <p>Измени фильтры или создай новый товар.</p>
-            </div>
-          ) : null}
-        </div>
+              <tbody>
+                {products.map((product) => (
+                  <tr key={product.id}>
+                    <td>
+                      <strong>{product.title}</strong>
+                      <br />
+                      <span className="muted-text">{product.sku}</span>
+                    </td>
+                    <td>
+                      {product.marketplaceName}
+                      <br />
+                      <span className="muted-text">
+                        {product.marketplaceType}
+                      </span>
+                    </td>
+                    <td>{product.price} ₽</td>
+                    <td>
+                      <StatusBadge
+                        tone={product.stock <= 10 ? "danger" : "success"}
+                      >
+                        {product.stock}
+                      </StatusBadge>
+                    </td>
+                    <td>{product.rating ?? "—"}</td>
+                    <td>
+                      <StatusBadge
+                        tone={product.isActive ? "success" : "neutral"}
+                      >
+                        {product.isActive ? "Активен" : "Неактивен"}
+                      </StatusBadge>
+                    </td>
+                    <td>
+                      <div className="product-actions">
+                        <button
+                          className="secondary-button"
+                          onClick={() => handleOpenDetails(product.id)}
+                          type="button"
+                        >
+                          Детали
+                        </button>
+                        <button
+                          className="secondary-button"
+                          onClick={() => handleEdit(product)}
+                          type="button"
+                        >
+                          Изменить
+                        </button>
+                        <button
+                          className="secondary-button"
+                          onClick={() => handleQuickToggleActive(product)}
+                          type="button"
+                        >
+                          {product.isActive ? "Скрыть" : "Активировать"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+
+        {!isLoading && products.length === 0 ? (
+          <EmptyState
+            title="Товары не найдены"
+            description="Измени фильтры, подключи маркетплейс или создай новый товар вручную."
+          />
+        ) : null}
       </PageSection>
 
       {selectedProduct ? (
-        <PageSection
-          title="Карточка товара"
-          description="Подробная информация по выбранному товару."
+        <div
+          className="product-modal-backdrop"
+          onClick={() => setSelectedProduct(null)}
         >
-          <div className="product-detail-grid">
-            <article className="product-detail-card">
-              <h3>{selectedProduct.title}</h3>
-              <p>{selectedProduct.sku}</p>
+          <section
+            className="product-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="product-modal__header">
+              <div>
+                <p>Карточка товара</p>
+                <h2>{selectedProduct.title}</h2>
+                <span>{selectedProduct.sku}</span>
+              </div>
 
-              <dl>
-                <div>
-                  <dt>Маркетплейс</dt>
-                  <dd>{selectedProduct.marketplaceName}</dd>
-                </div>
-                <div>
-                  <dt>Цена</dt>
-                  <dd>{selectedProduct.price} ₽</dd>
-                </div>
-                <div>
-                  <dt>Остаток</dt>
-                  <dd>{selectedProduct.stock}</dd>
-                </div>
-                <div>
-                  <dt>Рейтинг</dt>
-                  <dd>{selectedProduct.rating ?? "—"}</dd>
-                </div>
-              </dl>
-            </article>
+              <button
+                className="modal-close-button"
+                onClick={() => setSelectedProduct(null)}
+                type="button"
+              >
+                ×
+              </button>
+            </header>
 
-            <article className="product-detail-card">
-              <h3>Последние отзывы</h3>
+            <div className="product-modal__summary">
+              <article>
+                <span>Маркетплейс</span>
+                <strong>{selectedProduct.marketplaceName}</strong>
+              </article>
 
-              {selectedProduct.reviews.map((review) => (
-                <div className="mini-list-item" key={review.id}>
-                  <strong>
-                    {review.authorName} · {review.rating}/5
-                  </strong>
-                  <p>{review.text}</p>
-                </div>
-              ))}
+              <article>
+                <span>Цена</span>
+                <strong>{selectedProduct.price} ₽</strong>
+              </article>
 
-              {selectedProduct.reviews.length === 0 ? (
-                <p className="muted-text">Отзывов пока нет.</p>
-              ) : null}
-            </article>
+              <article>
+                <span>Остаток</span>
+                <strong>{selectedProduct.stock}</strong>
+              </article>
 
-            <article className="product-detail-card">
-              <h3>Последняя аналитика</h3>
+              <article>
+                <span>Рейтинг</span>
+                <strong>{selectedProduct.rating ?? "—"}</strong>
+              </article>
+            </div>
 
-              {selectedProduct.analytics.map((item) => (
-                <div className="mini-list-item" key={item.id}>
-                  <strong>{new Date(item.date).toLocaleDateString("ru-RU")}</strong>
-                  <p>
-                    Просмотры: {item.views}, заказы: {item.ordersCount},
-                    выручка: {item.revenue} ₽
-                  </p>
-                </div>
-              ))}
+            <div className="product-detail-grid">
+              <article className="product-detail-card">
+                <h3>Последние отзывы</h3>
 
-              {selectedProduct.analytics.length === 0 ? (
-                <p className="muted-text">Аналитики пока нет.</p>
-              ) : null}
-            </article>
+                {selectedProduct.reviews.map((review) => (
+                  <div className="mini-list-item" key={review.id}>
+                    <strong>
+                      {review.authorName} · {review.rating}/5
+                    </strong>
+                    <p>{review.text}</p>
+                  </div>
+                ))}
 
-            <article className="product-detail-card">
-              <h3>AI-рекомендации</h3>
+                {selectedProduct.reviews.length === 0 ? (
+                  <EmptyState
+                    title="Отзывов пока нет"
+                    description="Когда покупатели оставят отзывы, они появятся здесь."
+                  />
+                ) : null}
+              </article>
 
-              {selectedProduct.recommendations.map((recommendation) => (
-                <div className="mini-list-item" key={recommendation.id}>
-                  <strong>{recommendation.title}</strong>
-                  <p>{recommendation.content}</p>
-                </div>
-              ))}
+              <article className="product-detail-card">
+                <h3>Последняя аналитика</h3>
 
-              {selectedProduct.recommendations.length === 0 ? (
-                <p className="muted-text">Рекомендаций пока нет.</p>
-              ) : null}
-            </article>
-          </div>
-        </PageSection>
+                {selectedProduct.analytics.map((item) => (
+                  <div className="mini-list-item" key={item.id}>
+                    <strong>
+                      {new Date(item.date).toLocaleDateString("ru-RU")}
+                    </strong>
+                    <p>
+                      Просмотры: {item.views}, заказы: {item.ordersCount},
+                      выручка: {item.revenue} ₽
+                    </p>
+                  </div>
+                ))}
+
+                {selectedProduct.analytics.length === 0 ? (
+                  <EmptyState
+                    title="Аналитики пока нет"
+                    description="После синхронизации маркетплейса здесь появятся просмотры, заказы и выручка."
+                  />
+                ) : null}
+              </article>
+
+              <article className="product-detail-card">
+                <h3>AI-рекомендации</h3>
+
+                {selectedProduct.recommendations.map((recommendation) => (
+                  <div className="mini-list-item" key={recommendation.id}>
+                    <strong>{recommendation.title}</strong>
+                    <p>{recommendation.content}</p>
+                  </div>
+                ))}
+
+                {selectedProduct.recommendations.length === 0 ? (
+                  <EmptyState
+                    title="Рекомендаций пока нет"
+                    description="AI-рекомендации появятся после синхронизации и анализа товара."
+                  />
+                ) : null}
+              </article>
+
+              <article className="product-detail-card">
+                <h3>Служебная информация</h3>
+
+                <dl>
+                  <div>
+                    <dt>ID</dt>
+                    <dd>{selectedProduct.id}</dd>
+                  </div>
+                  <div>
+                    <dt>Создан</dt>
+                    <dd>
+                      {new Date(selectedProduct.createdAt).toLocaleString(
+                        "ru-RU",
+                      )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Обновлён</dt>
+                    <dd>
+                      {new Date(selectedProduct.updatedAt).toLocaleString(
+                        "ru-RU",
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+              </article>
+            </div>
+          </section>
+        </div>
       ) : null}
     </>
   );

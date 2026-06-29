@@ -1,10 +1,16 @@
 .layout {
-  display: flex;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
   min-height: 100vh;
+  background:
+    radial-gradient(circle at top right, rgb(186 230 253 / 35%), transparent 28%),
+    #f4f7fb;
 }
 
 .sidebar {
-  width: 260px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
   padding: 24px;
   background: #0f172a;
   color: #ffffff;
@@ -14,29 +20,31 @@
   display: flex;
   gap: 12px;
   align-items: center;
-  margin-bottom: 36px;
+  margin-bottom: 30px;
 }
 
 .sidebar__logo-mark {
   display: grid;
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   place-items: center;
   border-radius: 14px;
   background: #38bdf8;
   color: #0f172a;
-  font-weight: 800;
+  font-weight: 900;
+}
+
+.sidebar__logo strong {
+  display: block;
 }
 
 .sidebar__logo small {
-  display: block;
-  margin-top: 4px;
   color: #94a3b8;
 }
 
 .sidebar__nav {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .sidebar__nav-item {
@@ -46,39 +54,51 @@
   border-radius: 12px;
   background: transparent;
   color: #cbd5e1;
+  font-weight: 800;
   text-align: left;
 }
 
-.sidebar__nav-item:hover,
-.sidebar__nav-item--active {
-  background: #1e293b;
+.sidebar__nav-item:hover {
+  background: rgb(255 255 255 / 8%);
   color: #ffffff;
 }
 
+.sidebar__nav-item--active {
+  background: #ffffff;
+  color: #0f172a;
+}
+
 .main {
-  flex: 1;
   min-width: 0;
 }
 
 .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 18px;
-  padding: 24px 32px;
-  background: #ffffff;
+  padding: 18px 32px;
   border-bottom: 1px solid #e5e7eb;
-}
-
-.topbar h1 {
-  margin: 4px 0 0;
-  font-size: 28px;
+  background: rgb(255 255 255 / 88%);
+  backdrop-filter: blur(14px);
 }
 
 .topbar__eyebrow {
-  margin: 0;
+  margin: 0 0 4px;
   color: #64748b;
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.topbar h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 24px;
 }
 
 .topbar__actions {
@@ -128,5 +148,29 @@
 }
 
 .content {
-  padding: 32px;
+  display: grid;
+  gap: 22px;
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  padding: 28px 32px 42px;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    height: auto;
+  }
+
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .content {
+    padding: 20px;
+  }
 }

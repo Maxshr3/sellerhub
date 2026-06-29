@@ -5,7 +5,6 @@ import { AppLayout } from "./layout/AppLayout";
 import { AIAssistantPage } from "./pages/AIAssistantPage";
 import { AuthPage } from "./pages/AuthPage";
 import { DashboardPage } from "./pages/DashboardPage";
-import { MarketplacesPage } from "./pages/MarketplacesPage";
 import { ProductsPage } from "./pages/ProductsPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { ReviewsPage } from "./pages/ReviewsPage";
@@ -75,18 +74,17 @@ function App() {
   onLogout={handleLogout}
 >
       {currentPage === "dashboard" ? <DashboardPage /> : null}
-      {currentPage === "marketplaces" ? <MarketplacesPage /> : null}
       {currentPage === "products" ? <ProductsPage /> : null}
       {currentPage === "reviews" ? <ReviewsPage /> : null}
       {currentPage === "ai" ? <AIAssistantPage /> : null}
       {currentPage === "notifications" ? <NotificationsPage /> : null}
       {currentPage === "profile" ? (
-        <ProfilePage
-  user={user}
-  onProfileUpdate={setUser}
-  onLogout={handleLogout}
-/>
-      ) : null}
+  <ProfilePage
+    user={user}
+    onProfileUpdate={setUser}
+    onLogout={handleLogout}
+  />
+) : null}
     </AppLayout>
   );
 }

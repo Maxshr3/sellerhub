@@ -1,0 +1,38 @@
+.app-empty-state {
+  display: grid;
+  place-items: center;
+  padding: 42px 24px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 20px;
+  background: #f8fafc;
+  color: #64748b;
+  text-align: center;
+}
+
+.app-empty-state__icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 12px;
+  place-items: center;
+  border-radius: 18px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.app-empty-state strong {
+  color: #0f172a;
+  font-size: 18px;
+}
+
+.app-empty-state p {
+  max-width: 520px;
+  margin: 8px 0 0;
+  line-height: 1.55;
+}
+
+.app-empty-state__action {
+  margin-top: 18px;
+}

@@ -13,12 +13,10 @@ type AppLayoutProps = {
 
 const navItems = [
   { id: "dashboard", label: "Dashboard" },
-  { id: "notifications", label: "Notifications" },
-  { id: "marketplaces", label: "Marketplaces" },
   { id: "products", label: "Products" },
   { id: "reviews", label: "Reviews" },
   { id: "ai", label: "AI Assistant" },
-  { id: "profile", label: "Profile" },
+  { id: "profile", label: "Profile & Settings" },
 ];
 
 export function AppLayout({

@@ -47,3 +47,34 @@ a {
   margin: 8px 0 0;
   color: #64748b;
 }
+
+::selection {
+  background: #bae6fd;
+  color: #0f172a;
+}
+
+button {
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.page-section {
+  margin-bottom: 0;
+}
+
+.page-message-stack {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}

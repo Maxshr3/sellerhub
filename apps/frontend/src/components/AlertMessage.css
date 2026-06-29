@@ -1,0 +1,46 @@
+.app-alert {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  width: fit-content;
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-weight: 800;
+}
+
+.app-alert span {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 999px;
+  font-size: 13px;
+}
+
+.app-alert--success {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.app-alert--success span {
+  background: #bbf7d0;
+}
+
+.app-alert--error {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.app-alert--error span {
+  background: #fecaca;
+}
+
+.app-alert--info {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.app-alert--info span {
+  background: #bfdbfe;
+}

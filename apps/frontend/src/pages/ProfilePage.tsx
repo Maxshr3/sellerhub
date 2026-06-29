@@ -3,6 +3,7 @@ import type { ChangeEvent, FormEvent } from "react";
 import { updateProfile } from "../api/profileApi";
 import { PageSection } from "../components/PageSection";
 import type { AuthUser } from "../types/auth";
+import { MarketplacesPage } from "./MarketplacesPage";
 import "./ProfilePage.css";
 
 type ProfilePageProps = {
@@ -18,6 +19,10 @@ export function ProfilePage({
   onProfileUpdate,
   onLogout,
 }: ProfilePageProps) {
+  const [activeTab, setActiveTab] = useState<"profile" | "marketplaces">(
+    "profile",
+  );
+
   const [form, setForm] = useState({
     name: user.name,
     companyName: user.companyName ?? "",
@@ -29,6 +34,7 @@ export function ProfilePage({
     pushAlerts: user.pushAlerts,
     avatarUrl: user.avatarUrl,
   });
+
   const [isSaving, setIsSaving] = useState(false);
   const [errorText, setErrorText] = useState("");
   const [successText, setSuccessText] = useState("");
@@ -107,203 +113,250 @@ export function ProfilePage({
   return (
     <>
       <PageSection
-        title="Профиль"
-        description="Настройка аккаунта, компании, аватара и внешнего вида SellerHUB."
+        title="Profile & Settings"
+        description="Профиль, настройки аккаунта и подключение маркетплейсов."
       >
-        {errorText ? <p className="error-text">{errorText}</p> : null}
-        {successText ? <p className="success-text">{successText}</p> : null}
-
-        <div className="profile-grid">
-          <article
-            className="profile-card"
-            style={{
-              borderColor: form.accentColor,
-            }}
+        <div className="profile-tabs">
+          <button
+            className={activeTab === "profile" ? "profile-tabs__active" : ""}
+            onClick={() => setActiveTab("profile")}
+            type="button"
           >
-            <div
-              className="profile-avatar"
-              style={{
-                background: form.accentColor,
-              }}
-            >
-              {form.avatarUrl ? (
-                <img alt="Аватар пользователя" src={form.avatarUrl} />
-              ) : (
-                form.name.slice(0, 1).toUpperCase()
-              )}
-            </div>
+            Профиль
+          </button>
 
-            <h3>{form.name}</h3>
-            <p>{user.email}</p>
-
-            {form.companyName ? (
-              <span className="profile-chip">{form.companyName}</span>
-            ) : null}
-
-            {form.roleTitle ? (
-              <span className="profile-chip">{form.roleTitle}</span>
-            ) : null}
-
-            <button className="danger-button" onClick={onLogout} type="button">
-              Выйти из аккаунта
-            </button>
-          </article>
-
-          <form className="profile-form" onSubmit={handleSubmit}>
-            <h3>Редактирование профиля</h3>
-
-            <label>
-              <span>Фото профиля</span>
-              <input accept="image/*" onChange={handleAvatarChange} type="file" />
-            </label>
-
-            {form.avatarUrl ? (
-              <button
-                className="secondary-button"
-                onClick={() => handleChange("avatarUrl", null)}
-                type="button"
-              >
-                Удалить фото
-              </button>
-            ) : null}
-
-            <label>
-              <span>Имя</span>
-              <input
-                value={form.name}
-                onChange={(event) => handleChange("name", event.target.value)}
-              />
-            </label>
-
-            <label>
-              <span>Компания</span>
-              <input
-                value={form.companyName}
-                onChange={(event) =>
-                  handleChange("companyName", event.target.value)
-                }
-                placeholder="Например: SellerHUB Store"
-              />
-            </label>
-
-            <label>
-              <span>Должность</span>
-              <input
-                value={form.roleTitle}
-                onChange={(event) =>
-                  handleChange("roleTitle", event.target.value)
-                }
-                placeholder="Например: Marketplace Manager"
-              />
-            </label>
-
-            <label>
-              <span>Телефон</span>
-              <input
-                value={form.phone}
-                onChange={(event) => handleChange("phone", event.target.value)}
-                placeholder="+7..."
-              />
-            </label>
-
-            <div className="profile-form__row">
-              <label>
-                <span>Тема</span>
-                <select
-                  value={form.theme}
-                  onChange={(event) =>
-                    handleChange("theme", event.target.value)
-                  }
-                >
-                  <option value="SYSTEM">Как в системе</option>
-                  <option value="LIGHT">Светлая</option>
-                  <option value="DARK">Тёмная</option>
-                </select>
-              </label>
-
-              <label>
-                <span>Акцентный цвет</span>
-                <input
-                  value={form.accentColor}
-                  onChange={(event) =>
-                    handleChange("accentColor", event.target.value)
-                  }
-                  type="color"
-                />
-              </label>
-            </div>
-
-            <div className="accent-list">
-              {accentColors.map((color) => (
-                <button
-                  aria-label={`Выбрать цвет ${color}`}
-                  key={color}
-                  onClick={() => handleChange("accentColor", color)}
-                  style={{
-                    background: color,
-                  }}
-                  type="button"
-                />
-              ))}
-            </div>
-
-            <label className="profile-checkbox">
-              <input
-                checked={form.emailReports}
-                onChange={(event) =>
-                  handleChange("emailReports", event.target.checked)
-                }
-                type="checkbox"
-              />
-              <span>Получать email-отчёты</span>
-            </label>
-
-            <label className="profile-checkbox">
-              <input
-                checked={form.pushAlerts}
-                onChange={(event) =>
-                  handleChange("pushAlerts", event.target.checked)
-                }
-                type="checkbox"
-              />
-              <span>Получать важные уведомления</span>
-            </label>
-
-            <button className="primary-button" disabled={isSaving} type="submit">
-              {isSaving ? "Сохраняю..." : "Сохранить профиль"}
-            </button>
-          </form>
+          <button
+            className={
+              activeTab === "marketplaces" ? "profile-tabs__active" : ""
+            }
+            onClick={() => setActiveTab("marketplaces")}
+            type="button"
+          >
+            Маркетплейсы
+          </button>
         </div>
       </PageSection>
 
-      <PageSection
-        title="Данные аккаунта"
-        description="Служебная информация текущего пользователя."
-      >
-        <article className="profile-details">
-          <dl>
-            <div>
-              <dt>User ID</dt>
-              <dd>{user.id}</dd>
-            </div>
+      {activeTab === "profile" ? (
+        <>
+          <PageSection
+            title="Профиль"
+            description="Настройка аккаунта, компании, аватара и внешнего вида SellerHUB."
+          >
+            {errorText ? <p className="error-text">{errorText}</p> : null}
+            {successText ? <p className="success-text">{successText}</p> : null}
 
-            <div>
-              <dt>Email</dt>
-              <dd>{user.email}</dd>
-            </div>
+            <div className="profile-grid">
+              <article
+                className="profile-card"
+                style={{
+                  borderColor: form.accentColor,
+                }}
+              >
+                <div
+                  className="profile-avatar"
+                  style={{
+                    background: form.accentColor,
+                  }}
+                >
+                  {form.avatarUrl ? (
+                    <img alt="Аватар пользователя" src={form.avatarUrl} />
+                  ) : (
+                    form.name.slice(0, 1).toUpperCase()
+                  )}
+                </div>
 
-            <div>
-              <dt>Дата создания</dt>
-              <dd>{new Date(user.createdAt).toLocaleString("ru-RU")}</dd>
-            </div>
+                <h3>{form.name}</h3>
+                <p>{user.email}</p>
 
-            <div>
-              <dt>Последнее обновление</dt>
-              <dd>{new Date(user.updatedAt).toLocaleString("ru-RU")}</dd>
+                {form.companyName ? (
+                  <span className="profile-chip">{form.companyName}</span>
+                ) : null}
+
+                {form.roleTitle ? (
+                  <span className="profile-chip">{form.roleTitle}</span>
+                ) : null}
+
+                <button
+                  className="danger-button"
+                  onClick={onLogout}
+                  type="button"
+                >
+                  Выйти из аккаунта
+                </button>
+              </article>
+
+              <form className="profile-form" onSubmit={handleSubmit}>
+                <h3>Редактирование профиля</h3>
+
+                <label>
+                  <span>Фото профиля</span>
+                  <input
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                    type="file"
+                  />
+                </label>
+
+                {form.avatarUrl ? (
+                  <button
+                    className="secondary-button"
+                    onClick={() => handleChange("avatarUrl", null)}
+                    type="button"
+                  >
+                    Удалить фото
+                  </button>
+                ) : null}
+
+                <label>
+                  <span>Имя</span>
+                  <input
+                    value={form.name}
+                    onChange={(event) =>
+                      handleChange("name", event.target.value)
+                    }
+                  />
+                </label>
+
+                <label>
+                  <span>Компания</span>
+                  <input
+                    value={form.companyName}
+                    onChange={(event) =>
+                      handleChange("companyName", event.target.value)
+                    }
+                    placeholder="Например: SellerHUB Store"
+                  />
+                </label>
+
+                <label>
+                  <span>Должность</span>
+                  <input
+                    value={form.roleTitle}
+                    onChange={(event) =>
+                      handleChange("roleTitle", event.target.value)
+                    }
+                    placeholder="Например: Marketplace Manager"
+                  />
+                </label>
+
+                <label>
+                  <span>Телефон</span>
+                  <input
+                    value={form.phone}
+                    onChange={(event) =>
+                      handleChange("phone", event.target.value)
+                    }
+                    placeholder="+7..."
+                  />
+                </label>
+
+                <div className="profile-form__row">
+                  <label>
+                    <span>Тема</span>
+                    <select
+                      value={form.theme}
+                      onChange={(event) =>
+                        handleChange("theme", event.target.value)
+                      }
+                    >
+                      <option value="SYSTEM">Как в системе</option>
+                      <option value="LIGHT">Светлая</option>
+                      <option value="DARK">Тёмная</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    <span>Акцентный цвет</span>
+                    <input
+                      value={form.accentColor}
+                      onChange={(event) =>
+                        handleChange("accentColor", event.target.value)
+                      }
+                      type="color"
+                    />
+                  </label>
+                </div>
+
+                <div className="accent-list">
+                  {accentColors.map((color) => (
+                    <button
+                      aria-label={`Выбрать цвет ${color}`}
+                      key={color}
+                      onClick={() => handleChange("accentColor", color)}
+                      style={{
+                        background: color,
+                      }}
+                      type="button"
+                    />
+                  ))}
+                </div>
+
+                <label className="profile-checkbox">
+                  <input
+                    checked={form.emailReports}
+                    onChange={(event) =>
+                      handleChange("emailReports", event.target.checked)
+                    }
+                    type="checkbox"
+                  />
+                  <span>Получать email-отчёты</span>
+                </label>
+
+                <label className="profile-checkbox">
+                  <input
+                    checked={form.pushAlerts}
+                    onChange={(event) =>
+                      handleChange("pushAlerts", event.target.checked)
+                    }
+                    type="checkbox"
+                  />
+                  <span>Получать важные уведомления</span>
+                </label>
+
+                <button
+                  className="primary-button"
+                  disabled={isSaving}
+                  type="submit"
+                >
+                  {isSaving ? "Сохраняю..." : "Сохранить профиль"}
+                </button>
+              </form>
             </div>
-          </dl>
-        </article>
-      </PageSection>
+          </PageSection>
+
+          <PageSection
+            title="Данные аккаунта"
+            description="Служебная информация текущего пользователя."
+          >
+            <article className="profile-details">
+              <dl>
+                <div>
+                  <dt>User ID</dt>
+                  <dd>{user.id}</dd>
+                </div>
+
+                <div>
+                  <dt>Email</dt>
+                  <dd>{user.email}</dd>
+                </div>
+
+                <div>
+                  <dt>Дата создания</dt>
+                  <dd>{new Date(user.createdAt).toLocaleString("ru-RU")}</dd>
+                </div>
+
+                <div>
+                  <dt>Последнее обновление</dt>
+                  <dd>{new Date(user.updatedAt).toLocaleString("ru-RU")}</dd>
+                </div>
+              </dl>
+            </article>
+          </PageSection>
+        </>
+      ) : null}
+
+      {activeTab === "marketplaces" ? <MarketplacesPage /> : null}
     </>
   );
 }

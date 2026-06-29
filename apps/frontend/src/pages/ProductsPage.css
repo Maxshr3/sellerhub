@@ -83,6 +83,7 @@
   border: 1px solid #e5e7eb;
   border-radius: 18px;
   background: #ffffff;
+  box-shadow: 0 10px 30px rgb(15 23 42 / 6%);
 }
 
 table {
@@ -157,18 +158,13 @@ tr:last-child td {
 }
 
 .product-detail-card h3 {
-  margin: 0;
-}
-
-.product-detail-card > p {
-  margin: 8px 0 16px;
-  color: #64748b;
+  margin: 0 0 12px;
 }
 
 .product-detail-card dl {
   display: grid;
   gap: 10px;
-  margin: 16px 0 0;
+  margin: 0;
 }
 
 .product-detail-card dl div {
@@ -187,6 +183,7 @@ tr:last-child td {
 .product-detail-card dd {
   margin: 0;
   color: #0f172a;
+  overflow-wrap: anywhere;
 }
 
 .mini-list-item {
@@ -200,6 +197,96 @@ tr:last-child td {
   margin: 6px 0 0;
   color: #475569;
   line-height: 1.5;
+}
+
+.product-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(15 23 42 / 55%);
+  backdrop-filter: blur(6px);
+}
+
+.product-modal {
+  width: min(1120px, 100%);
+  max-height: 88vh;
+  overflow: auto;
+  padding: 24px;
+  border-radius: 24px;
+  background: #f8fafc;
+  box-shadow: 0 30px 100px rgb(15 23 42 / 35%);
+}
+
+.product-modal__header {
+  position: sticky;
+  top: -24px;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin: -24px -24px 20px;
+  padding: 22px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.product-modal__header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.product-modal__header h2 {
+  margin: 5px 0;
+}
+
+.product-modal__header span {
+  color: #64748b;
+}
+
+.modal-close-button {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #0f172a;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.product-modal__summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.product-modal__summary article {
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.product-modal__summary span {
+  display: block;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.product-modal__summary strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 20px;
 }
 
 .primary-button,
@@ -251,5 +338,11 @@ tr:last-child td {
 
   .product-form__row {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .product-modal__summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

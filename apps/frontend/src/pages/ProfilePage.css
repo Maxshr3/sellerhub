@@ -1,3 +1,27 @@
+.profile-tabs {
+  display: inline-flex;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 10px 30px rgb(15 23 42 / 6%);
+}
+
+.profile-tabs button {
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #64748b;
+  font-weight: 900;
+}
+
+.profile-tabs__active {
+  background: #0f172a !important;
+  color: #ffffff !important;
+}
+
 .profile-grid {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
