@@ -346,3 +346,15 @@ tr:last-child td {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.product-card .product-health-badge,
+.product-list-card .product-health-badge,
+.products-card .product-health-badge {
+  margin-top: 12px;
+}
+
+.product-card .product-health-badge--compact,
+.product-list-card .product-health-badge--compact,
+.products-card .product-health-badge--compact {
+  margin-top: 0;
+}

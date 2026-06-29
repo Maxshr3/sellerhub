@@ -1,0 +1,58 @@
+.product-health-badge {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.product-health-badge--success {
+  background: #ecfdf5;
+}
+
+.product-health-badge--warning {
+  background: #fff7ed;
+}
+
+.product-health-badge--danger {
+  background: #fef2f2;
+}
+
+.product-health-badge > div {
+  display: grid;
+  gap: 5px;
+}
+
+.product-health-badge span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.product-health-badge strong {
+  color: #0f172a;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.product-health-badge p {
+  margin: 0;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.product-health-badge--compact {
+  display: inline-flex;
+  width: fit-content;
+  padding: 0;
+  background: transparent;
+}
+
+.product-health-badge--compact > span {
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+}

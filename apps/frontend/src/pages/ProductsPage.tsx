@@ -11,6 +11,7 @@ import { AlertMessage } from "../components/AlertMessage";
 import { EmptyState } from "../components/EmptyState";
 import { LoadingState } from "../components/LoadingState";
 import { PageSection } from "../components/PageSection";
+import { ProductHealthBadge } from "../components/ProductHealthBadge";
 import { StatusBadge } from "../components/StatusBadge";
 import {
   buildProductIntelligence,
@@ -550,11 +551,11 @@ const productScenario = useMemo(
                     </td>
                     <td>{product.price} ₽</td>
                     <td>
-                      <StatusBadge
-                        tone={product.stock <= 10 ? "danger" : "success"}
-                      >
-                        {product.stock}
-                      </StatusBadge>
+                      <StatusBadge tone={product.stock <= 10 ? "warning" : "success"}>
+  {`${product.stock}`}
+</StatusBadge>
+
+<ProductHealthBadge product={product} compact />
                     </td>
                     <td>{product.rating ?? "—"}</td>
                     <td>
