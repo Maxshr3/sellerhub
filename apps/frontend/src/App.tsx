@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getCurrentUser } from "./api/authApi";
-import { NotificationsPage } from "./pages/NotificationsPage";
 import { AppLayout } from "./layout/AppLayout";
 import { AIAssistantPage } from "./pages/AIAssistantPage";
 import { AuthPage } from "./pages/AuthPage";
@@ -20,6 +19,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(Boolean(getStoredToken()));
+  const [productToOpenId, setProductToOpenId] = useState<string | null>(null);
 
   useEffect(() => {
     const token = getStoredToken();
@@ -49,7 +49,17 @@ function App() {
     clearStoredToken();
     setUser(null);
     setCurrentPage("dashboard");
+    setProductToOpenId(null);
   }
+
+  const handleOpenProduct = useCallback((productId: string) => {
+  setProductToOpenId(productId);
+  setCurrentPage("products");
+}, []);
+
+const handleProductModalOpened = useCallback(() => {
+  setProductToOpenId(null);
+}, []);
 
   if (isCheckingAuth) {
     return (
@@ -66,25 +76,37 @@ function App() {
 
   return (
     <AppLayout
-  currentPage={currentPage}
-  userName={user.name}
-  avatarUrl={user.avatarUrl}
-  accentColor={user.accentColor}
-  onPageChange={setCurrentPage}
-  onLogout={handleLogout}
->
-      {currentPage === "dashboard" ? <DashboardPage /> : null}
-      {currentPage === "products" ? <ProductsPage /> : null}
-      {currentPage === "reviews" ? <ReviewsPage /> : null}
+      currentPage={currentPage}
+      userName={user.name}
+      avatarUrl={user.avatarUrl}
+      accentColor={user.accentColor}
+      onPageChange={setCurrentPage}
+      onLogout={handleLogout}
+    >
+      {currentPage === "dashboard" ? (
+        <DashboardPage onOpenProduct={handleOpenProduct} />
+      ) : null}
+
+      {currentPage === "products" ? (
+        <ProductsPage
+          productToOpenId={productToOpenId}
+          onProductModalOpened={handleProductModalOpened}
+        />
+      ) : null}
+
+      {currentPage === "reviews" ? (
+        <ReviewsPage onOpenProduct={handleOpenProduct} />
+      ) : null}
+
       {currentPage === "ai" ? <AIAssistantPage /> : null}
-      {currentPage === "notifications" ? <NotificationsPage /> : null}
+
       {currentPage === "profile" ? (
-  <ProfilePage
-    user={user}
-    onProfileUpdate={setUser}
-    onLogout={handleLogout}
-  />
-) : null}
+        <ProfilePage
+          user={user}
+          onProfileUpdate={setUser}
+          onLogout={handleLogout}
+        />
+      ) : null}
     </AppLayout>
   );
 }

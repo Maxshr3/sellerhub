@@ -6,7 +6,11 @@ import {
   getReviews,
   updateReviewStatus,
 } from "../api/reviewsApi";
+import { AlertMessage } from "../components/AlertMessage";
+import { EmptyState } from "../components/EmptyState";
+import { LoadingState } from "../components/LoadingState";
 import { PageSection } from "../components/PageSection";
+import { StatusBadge } from "../components/StatusBadge";
 import type {
   Review,
   ReviewFilters,
@@ -15,38 +19,72 @@ import type {
 } from "../types/review";
 import "./ReviewsPage.css";
 
-const answerTemplates = [
-  "Спасибо за отзыв! Мы рады, что товар вам понравился.",
-  "Спасибо за обратную связь. Мы учтём ваше замечание и постараемся улучшить качество сервиса.",
-  "Здравствуйте! Нам жаль, что покупка не полностью оправдала ожидания. Мы передадим информацию команде и проверим карточку товара.",
-];
+type ReviewsPageProps = {
+  onOpenProduct: (productId: string) => void;
+};
 
-export function ReviewsPage() {
+const statusLabels = {
+  NEW: "Новый",
+  ANSWERED: "Отвечен",
+  ARCHIVED: "Архив",
+};
+
+const priorityLabels = {
+  HIGH: "Высокий",
+  MEDIUM: "Средний",
+  LOW: "Низкий",
+};
+
+function getPriorityTone(priority: ReviewPriority) {
+  if (priority === "HIGH") return "danger";
+  if (priority === "MEDIUM") return "warning";
+  return "neutral";
+}
+
+function getStatusTone(status: ReviewStatus) {
+  if (status === "ANSWERED") return "success";
+  if (status === "ARCHIVED") return "neutral";
+  return "info";
+}
+
+export function ReviewsPage({ onOpenProduct }: ReviewsPageProps) {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [answerText, setAnswerText] = useState("");
+  const [aiSuggestion, setAiSuggestion] = useState("");
+
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
-  const [priority, setPriority] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("");
   const [ratingFilter, setRatingFilter] = useState("");
   const [answerFilter, setAnswerFilter] = useState("");
+
   const [isLoading, setIsLoading] = useState(true);
-  const [isAnswering, setIsAnswering] = useState(false);
+  const [isSavingAnswer, setIsSavingAnswer] = useState(false);
   const [isGeneratingAnswer, setIsGeneratingAnswer] = useState(false);
   const [errorText, setErrorText] = useState("");
   const [successText, setSuccessText] = useState("");
 
+  const newReviewsCount = reviews.filter((review) => review.status === "NEW").length;
+  const highPriorityCount = reviews.filter(
+    (review) => review.priority === "HIGH",
+  ).length;
+  const unansweredCount = reviews.filter((review) => !review.answerText).length;
+  const negativeCount = reviews.filter((review) => review.rating <= 3).length;
+
   function buildFilters(): ReviewFilters {
     return {
       search: search.trim() || undefined,
-      status: status ? (status as ReviewStatus) : undefined,
-      priority: priority ? (priority as ReviewPriority) : undefined,
-      ratingMax: ratingFilter === "negative" ? 3 : undefined,
-      ratingMin: ratingFilter === "positive" ? 4 : undefined,
+      status: statusFilter ? (statusFilter as ReviewStatus) : undefined,
+      priority: priorityFilter
+        ? (priorityFilter as ReviewPriority)
+        : undefined,
+      ratingMax: ratingFilter === "bad" ? 3 : undefined,
+      ratingMin: ratingFilter === "good" ? 4 : undefined,
       hasAnswer:
         answerFilter === "answered"
           ? true
-          : answerFilter === "without-answer"
+          : answerFilter === "unanswered"
             ? false
             : undefined,
     };
@@ -81,61 +119,42 @@ export function ReviewsPage() {
       });
   }, []);
 
-  function handleFilterSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleFiltersSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     loadReviews(buildFilters());
   }
 
   function handleResetFilters() {
     setSearch("");
-    setStatus("");
-    setPriority("");
+    setStatusFilter("");
+    setPriorityFilter("");
     setRatingFilter("");
     setAnswerFilter("");
     loadReviews();
   }
 
-  function handleQuickFilter(type: "negative" | "priority" | "new") {
-    if (type === "negative") {
-      setRatingFilter("negative");
-      setPriority("");
-      setStatus("");
-      setAnswerFilter("");
-      loadReviews({
-        ratingMax: 3,
-      });
-    }
+  function handleQuickFilter(filters: ReviewFilters) {
+    setSearch("");
+    setStatusFilter(filters.status ?? "");
+    setPriorityFilter(filters.priority ?? "");
+    setRatingFilter(filters.ratingMax === 3 ? "bad" : "");
+    setAnswerFilter(
+      filters.hasAnswer === true
+        ? "answered"
+        : filters.hasAnswer === false
+          ? "unanswered"
+          : "",
+    );
 
-    if (type === "priority") {
-      setPriority("HIGH");
-      setRatingFilter("");
-      setStatus("");
-      setAnswerFilter("");
-      loadReviews({
-        priority: "HIGH",
-      });
-    }
-
-    if (type === "new") {
-      setStatus("NEW");
-      setPriority("");
-      setRatingFilter("");
-      setAnswerFilter("");
-      loadReviews({
-        status: "NEW",
-      });
-    }
+    loadReviews(filters);
   }
 
   function handleSelectReview(review: Review) {
     setSelectedReview(review);
     setAnswerText(review.answerText ?? "");
-    setSuccessText("");
+    setAiSuggestion("");
     setErrorText("");
-  }
-
-  function handleTemplateClick(template: string) {
-    setAnswerText(template);
+    setSuccessText("");
   }
 
   function handleGenerateAiAnswer() {
@@ -149,8 +168,9 @@ export function ReviewsPage() {
 
     generateReviewAnswer(selectedReview.id)
       .then((response) => {
+        setAiSuggestion(response.data.suggestedAnswer);
         setAnswerText(response.data.suggestedAnswer);
-        setSuccessText("AI подготовил черновик ответа.");
+        setSuccessText("AI подготовил вариант ответа.");
       })
       .catch(() => {
         setErrorText("Не удалось сгенерировать AI-ответ.");
@@ -164,7 +184,6 @@ export function ReviewsPage() {
     event.preventDefault();
 
     if (!selectedReview) {
-      setErrorText("Сначала выбери отзыв.");
       return;
     }
 
@@ -173,7 +192,7 @@ export function ReviewsPage() {
       return;
     }
 
-    setIsAnswering(true);
+    setIsSavingAnswer(true);
     setErrorText("");
     setSuccessText("");
 
@@ -187,30 +206,27 @@ export function ReviewsPage() {
         setErrorText("Не удалось сохранить ответ.");
       })
       .finally(() => {
-        setIsAnswering(false);
+        setIsSavingAnswer(false);
       });
   }
 
   function handleArchiveReview(review: Review) {
     updateReviewStatus(review.id, "ARCHIVED")
-      .then(() => {
+      .then((response) => {
+        setSelectedReview(response.data);
         setSuccessText("Отзыв отправлен в архив.");
-        if (selectedReview?.id === review.id) {
-          setSelectedReview(null);
-          setAnswerText("");
-        }
         loadReviews(buildFilters());
       })
       .catch(() => {
-        setErrorText("Не удалось архивировать отзыв.");
+        setErrorText("Не удалось отправить отзыв в архив.");
       });
   }
 
   function handleRestoreReview(review: Review) {
     updateReviewStatus(review.id, "NEW")
       .then((response) => {
-        setSuccessText("Отзыв возвращён в новые.");
         setSelectedReview(response.data);
+        setSuccessText("Отзыв возвращён в работу.");
         loadReviews(buildFilters());
       })
       .catch(() => {
@@ -218,37 +234,63 @@ export function ReviewsPage() {
       });
   }
 
-  const highPriorityCount = reviews.filter(
-    (review) => review.priority === "HIGH",
-  ).length;
-  const negativeCount = reviews.filter((review) => review.rating <= 3).length;
-  const newCount = reviews.filter((review) => review.status === "NEW").length;
-
   return (
     <>
       <PageSection
-        title="Reviews Management"
-        description="Работа с отзывами: приоритеты, негатив, AI-ответы, шаблоны и статусы."
+        title="Reviews"
+        description="Работа с отзывами покупателей: фильтрация, приоритеты, AI-ответы и архивирование."
       >
-        {errorText ? <p className="error-text">{errorText}</p> : null}
-        {successText ? <p className="success-text">{successText}</p> : null}
+        <div className="page-message-stack">
+          {errorText ? <AlertMessage type="error">{errorText}</AlertMessage> : null}
+          {successText ? (
+            <AlertMessage type="success">{successText}</AlertMessage>
+          ) : null}
+        </div>
 
-        <div className="review-summary-grid">
-          <button onClick={() => handleQuickFilter("priority")} type="button">
+        <div className="reviews-summary">
+          <button
+            className="reviews-summary-card"
+            onClick={() => handleQuickFilter({ status: "NEW" })}
+            type="button"
+          >
+            <span>Новые</span>
+            <strong>{newReviewsCount}</strong>
+          </button>
+
+          <button
+            className="reviews-summary-card"
+            onClick={() => handleQuickFilter({ priority: "HIGH" })}
+            type="button"
+          >
             <span>Высокий приоритет</span>
             <strong>{highPriorityCount}</strong>
           </button>
-          <button onClick={() => handleQuickFilter("negative")} type="button">
+
+          <button
+            className="reviews-summary-card"
+            onClick={() => handleQuickFilter({ hasAnswer: false })}
+            type="button"
+          >
+            <span>Без ответа</span>
+            <strong>{unansweredCount}</strong>
+          </button>
+
+          <button
+            className="reviews-summary-card"
+            onClick={() => handleQuickFilter({ ratingMax: 3 })}
+            type="button"
+          >
             <span>Негативные</span>
             <strong>{negativeCount}</strong>
           </button>
-          <button onClick={() => handleQuickFilter("new")} type="button">
-            <span>Новые</span>
-            <strong>{newCount}</strong>
-          </button>
         </div>
+      </PageSection>
 
-        <form className="reviews-filters" onSubmit={handleFilterSubmit}>
+      <PageSection
+        title="Фильтры отзывов"
+        description="Можно быстро найти негативные отзывы, новые обращения или отзывы без ответа."
+      >
+        <form className="reviews-filters" onSubmit={handleFiltersSubmit}>
           <label>
             <span>Поиск</span>
             <input
@@ -261,12 +303,12 @@ export function ReviewsPage() {
           <label>
             <span>Статус</span>
             <select
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
             >
               <option value="">Все</option>
               <option value="NEW">Новые</option>
-              <option value="ANSWERED">С ответом</option>
+              <option value="ANSWERED">Отвеченные</option>
               <option value="ARCHIVED">Архив</option>
             </select>
           </label>
@@ -274,8 +316,8 @@ export function ReviewsPage() {
           <label>
             <span>Приоритет</span>
             <select
-              value={priority}
-              onChange={(event) => setPriority(event.target.value)}
+              value={priorityFilter}
+              onChange={(event) => setPriorityFilter(event.target.value)}
             >
               <option value="">Все</option>
               <option value="HIGH">Высокий</option>
@@ -291,8 +333,8 @@ export function ReviewsPage() {
               onChange={(event) => setRatingFilter(event.target.value)}
             >
               <option value="">Все</option>
-              <option value="negative">Негативные 1–3</option>
-              <option value="positive">Позитивные 4–5</option>
+              <option value="bad">1–3</option>
+              <option value="good">4–5</option>
             </select>
           </label>
 
@@ -303,8 +345,8 @@ export function ReviewsPage() {
               onChange={(event) => setAnswerFilter(event.target.value)}
             >
               <option value="">Все</option>
-              <option value="without-answer">Без ответа</option>
               <option value="answered">С ответом</option>
+              <option value="unanswered">Без ответа</option>
             </select>
           </label>
 
@@ -312,6 +354,7 @@ export function ReviewsPage() {
             <button className="primary-button" type="submit">
               Применить
             </button>
+
             <button
               className="secondary-button"
               onClick={handleResetFilters}
@@ -323,162 +366,194 @@ export function ReviewsPage() {
         </form>
       </PageSection>
 
-      <div className="reviews-layout">
+      <div className="reviews-workspace">
         <PageSection title="Список отзывов">
-          {isLoading ? <p>Загрузка отзывов...</p> : null}
+          {isLoading ? (
+            <LoadingState title="Загрузка отзывов..." rows={5} />
+          ) : null}
 
-          <div className="reviews-list">
-            {reviews.map((review) => (
-              <article
-                className={
-                  selectedReview?.id === review.id
-                    ? "review-card review-card--selected"
-                    : "review-card"
-                }
-                key={review.id}
-              >
-                <div className="review-card__top">
-                  <div>
-                    <strong>{review.authorName}</strong>
-                    <p>
-                      {review.product.title} · {review.product.marketplaceName}
-                    </p>
-                  </div>
+          {!isLoading && reviews.length > 0 ? (
+            <div className="reviews-list">
+              {reviews.map((review) => (
+                <article
+                  className={
+                    selectedReview?.id === review.id
+                      ? "review-card review-card--active"
+                      : "review-card"
+                  }
+                  key={review.id}
+                >
+                  <button
+                    className="review-card__main"
+                    onClick={() => handleSelectReview(review)}
+                    type="button"
+                  >
+                    <div className="review-card__top">
+                      <div>
+                        <h3>{review.product.title}</h3>
+                        <span>
+                          {review.product.marketplaceName} · {review.product.sku}
+                        </span>
+                      </div>
 
-                  <div className="review-badges">
-                    <span
-                      className={`priority-badge priority-badge--${review.priority.toLowerCase()}`}
-                    >
-                      {review.priority}
-                    </span>
-                    <span className="rating-badge">{review.rating}/5</span>
-                  </div>
-                </div>
+                      <strong>{review.rating}/5</strong>
+                    </div>
 
-                <p className="review-text">{review.text}</p>
+                    <p>{review.text}</p>
 
-                {review.answerText ? (
-                  <div className="review-answer-preview">
-                    <strong>Ответ:</strong>
-                    <p>{review.answerText}</p>
-                  </div>
-                ) : null}
+                    <footer>
+                      <span>{review.authorName}</span>
+                      <span>{new Date(review.createdAt).toLocaleDateString("ru-RU")}</span>
+                    </footer>
+                  </button>
 
-                <div className="review-card__footer">
-                  <span>{review.status}</span>
+                  <div className="review-card__badges">
+                    <StatusBadge tone={getStatusTone(review.status)}>
+                      {statusLabels[review.status]}
+                    </StatusBadge>
 
-                  <div>
-                    <button
-                      className="secondary-button"
-                      onClick={() => handleSelectReview(review)}
-                      type="button"
-                    >
-                      Ответить
-                    </button>
+                    <StatusBadge tone={getPriorityTone(review.priority)}>
+                      {priorityLabels[review.priority]}
+                    </StatusBadge>
 
-                    {review.status === "ARCHIVED" ? (
-                      <button
-                        className="secondary-button"
-                        onClick={() => handleRestoreReview(review)}
-                        type="button"
-                      >
-                        Вернуть
-                      </button>
+                    {!review.answerText ? (
+                      <StatusBadge tone="warning">Без ответа</StatusBadge>
                     ) : (
-                      <button
-                        className="secondary-button"
-                        onClick={() => handleArchiveReview(review)}
-                        type="button"
-                      >
-                        Архив
-                      </button>
+                      <StatusBadge tone="success">Ответ есть</StatusBadge>
                     )}
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              ))}
+            </div>
+          ) : null}
 
-            {!isLoading && reviews.length === 0 ? (
-              <div className="empty-state">
-                <strong>Отзывы не найдены</strong>
-                <p>Измени фильтры или синхронизируй маркетплейс.</p>
-              </div>
-            ) : null}
-          </div>
+          {!isLoading && reviews.length === 0 ? (
+            <EmptyState
+              title="Отзывы не найдены"
+              description="Измени фильтры, синхронизируй маркетплейсы или дождись новых отзывов покупателей."
+            />
+          ) : null}
         </PageSection>
 
         <PageSection
-          title="Ответ на отзыв"
-          description="Выбери отзыв слева, сгенерируй AI-черновик или используй шаблон."
+          title="Карточка отзыва"
+          description="Выбери отзыв слева, чтобы подготовить ответ или изменить статус."
         >
+          {!selectedReview ? (
+            <EmptyState
+              title="Отзыв не выбран"
+              description="Нажми на любой отзыв в списке, чтобы открыть его подробности."
+            />
+          ) : null}
+
           {selectedReview ? (
-            <div className="answer-panel">
-              <div className="selected-review">
-                <div className="review-card__top">
-                  <div>
-                    <strong>{selectedReview.authorName}</strong>
-                    <p>{selectedReview.product.title}</p>
-                  </div>
-                  <span className="rating-badge">
-                    {selectedReview.rating}/5
-                  </span>
+            <div className="review-detail">
+              <div className="review-detail__header">
+                <div>
+                  <h3>{selectedReview.product.title}</h3>
+                  <p>
+                    {selectedReview.product.marketplaceName} ·{" "}
+                    {selectedReview.product.marketplaceType} ·{" "}
+                    {selectedReview.product.sku}
+                  </p>
                 </div>
 
+                <div className="review-detail__rating">
+                  {selectedReview.rating}/5
+                </div>
+              </div>
+
+              <div className="review-detail__badges">
+                <StatusBadge tone={getStatusTone(selectedReview.status)}>
+                  {statusLabels[selectedReview.status]}
+                </StatusBadge>
+
+                <StatusBadge tone={getPriorityTone(selectedReview.priority)}>
+                  {priorityLabels[selectedReview.priority]}
+                </StatusBadge>
+              </div>
+
+              <article className="review-message">
+                <span>Отзыв покупателя</span>
                 <p>{selectedReview.text}</p>
-              </div>
+                <footer>
+                  {selectedReview.authorName} ·{" "}
+                  {new Date(selectedReview.createdAt).toLocaleString("ru-RU")}
+                </footer>
+              </article>
 
-              <div className="answer-templates">
-                <h4>Быстрые шаблоны</h4>
+              {selectedReview.answerText ? (
+                <article className="review-message review-message--answer">
+                  <span>Текущий ответ</span>
+                  <p>{selectedReview.answerText}</p>
+                </article>
+              ) : null}
 
-                {answerTemplates.map((template) => (
-                  <button
-                    key={template}
-                    onClick={() => handleTemplateClick(template)}
-                    type="button"
-                  >
-                    {template}
-                  </button>
-                ))}
-              </div>
+              {aiSuggestion ? (
+                <article className="review-message review-message--ai">
+                  <span>AI-предложение</span>
+                  <p>{aiSuggestion}</p>
+                </article>
+              ) : null}
 
-              <form className="answer-form" onSubmit={handleAnswerSubmit}>
+              <form className="review-answer-form" onSubmit={handleAnswerSubmit}>
                 <label>
-                  <span>Текст ответа</span>
+                  <span>Ответ продавца</span>
                   <textarea
                     value={answerText}
                     onChange={(event) => setAnswerText(event.target.value)}
-                    rows={8}
+                    placeholder="Напиши ответ покупателю или сгенерируй AI-вариант"
+                    rows={7}
                   />
                 </label>
 
-                <div className="answer-actions">
+                <div className="review-detail__actions">
+                    <button
+  className="secondary-button"
+  onClick={() => onOpenProduct(selectedReview.product.id)}
+  type="button"
+>
+  Открыть товар
+</button>
+
                   <button
                     className="secondary-button"
                     disabled={isGeneratingAnswer}
                     onClick={handleGenerateAiAnswer}
                     type="button"
                   >
-                    {isGeneratingAnswer
-                      ? "Генерирую..."
-                      : "Сгенерировать AI-ответ"}
+                    {isGeneratingAnswer ? "Генерирую..." : "AI-ответ"}
                   </button>
 
                   <button
                     className="primary-button"
-                    disabled={isAnswering}
+                    disabled={isSavingAnswer}
                     type="submit"
                   >
-                    {isAnswering ? "Сохраняю..." : "Сохранить ответ"}
+                    {isSavingAnswer ? "Сохраняю..." : "Сохранить ответ"}
                   </button>
+
+                  {selectedReview.status !== "ARCHIVED" ? (
+                    <button
+                      className="secondary-button"
+                      onClick={() => handleArchiveReview(selectedReview)}
+                      type="button"
+                    >
+                      В архив
+                    </button>
+                  ) : (
+                    <button
+                      className="secondary-button"
+                      onClick={() => handleRestoreReview(selectedReview)}
+                      type="button"
+                    >
+                      Вернуть в работу
+                    </button>
+                  )}
                 </div>
               </form>
             </div>
-          ) : (
-            <div className="empty-state">
-              <strong>Отзыв не выбран</strong>
-              <p>Нажми “Ответить” у нужного отзыва.</p>
-            </div>
-          )}
+          ) : null}
         </PageSection>
       </div>
     </>

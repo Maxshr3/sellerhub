@@ -24,6 +24,11 @@ import "./ProductsPage.css";
 
 type ProductFormMode = "create" | "edit";
 
+type ProductsPageProps = {
+  productToOpenId?: string | null;
+  onProductModalOpened?: () => void;
+};
+
 const emptyForm = {
   marketplaceId: "",
   title: "",
@@ -34,7 +39,10 @@ const emptyForm = {
   isActive: true,
 };
 
-export function ProductsPage() {
+export function ProductsPage({
+  productToOpenId,
+  onProductModalOpened,
+}: ProductsPageProps) {
   const [products, setProducts] = useState<Product[]>([]);
   const [marketplaces, setMarketplaces] = useState<MarketplaceConnection[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<ProductDetail | null>(
@@ -242,6 +250,22 @@ export function ProductsPage() {
         setErrorText("Не удалось загрузить карточку товара.");
       });
   }
+
+    useEffect(() => {
+  if (!productToOpenId) {
+    return;
+  }
+
+  getProductById(productToOpenId)
+    .then((response) => {
+      setSelectedProduct(response.data);
+      onProductModalOpened?.();
+    })
+    .catch(() => {
+      setErrorText("Не удалось загрузить карточку товара.");
+      onProductModalOpened?.();
+    });
+}, [productToOpenId, onProductModalOpened]);
 
   function handleQuickToggleActive(product: Product) {
     updateProduct(product.id, {

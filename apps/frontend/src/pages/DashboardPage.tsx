@@ -1,38 +1,56 @@
 import { useEffect, useState } from "react";
-import {
-  getDashboardAnalytics,
-  type DashboardAnalyticsFilters,
-} from "../api/analyticsApi";
+import type { FormEvent } from "react";
+import { getDashboardAnalytics } from "../api/analyticsApi";
+import { AlertMessage } from "../components/AlertMessage";
+import { EmptyState } from "../components/EmptyState";
+import { LoadingState } from "../components/LoadingState";
 import { PageSection } from "../components/PageSection";
-import type { DashboardAnalytics } from "../types/analytics";
+import { StatusBadge } from "../components/StatusBadge";
 import "./DashboardPage.css";
 
-function getTodayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
+type DashboardData = Awaited<ReturnType<typeof getDashboardAnalytics>>["data"];
+
+type DashboardPageProps = {
+  onOpenProduct: (productId: string) => void;
+};
+
+const priorityLabels = {
+  HIGH: "Высокий",
+  MEDIUM: "Средний",
+  LOW: "Низкий",
+};
+
+function getPriorityTone(priority: "HIGH" | "MEDIUM" | "LOW") {
+  if (priority === "HIGH") {
+    return "danger";
+  }
+
+  if (priority === "MEDIUM") {
+    return "warning";
+  }
+
+  return "neutral";
 }
 
-function getDateBefore(days: number) {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-
-  return date.toISOString().slice(0, 10);
-}
-
-export function DashboardPage() {
-  const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
+export function DashboardPage({ onOpenProduct }: DashboardPageProps) {
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [marketplaceId, setMarketplaceId] = useState("");
-  const [dateFrom, setDateFrom] = useState(getDateBefore(30));
-  const [dateTo, setDateTo] = useState(getTodayIsoDate());
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [errorText, setErrorText] = useState("");
 
-  function loadDashboard(filters?: DashboardAnalyticsFilters) {
+  function loadDashboard(filters?: {
+    marketplaceId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+  }) {
     setIsLoading(true);
     setErrorText("");
 
     getDashboardAnalytics(filters)
       .then((response) => {
-        setAnalytics(response.data);
+        setDashboard(response.data);
       })
       .catch(() => {
         setErrorText("Не удалось загрузить аналитику. Проверь backend.");
@@ -43,12 +61,9 @@ export function DashboardPage() {
   }
 
   useEffect(() => {
-    getDashboardAnalytics({
-      dateFrom: getDateBefore(30),
-      dateTo: getTodayIsoDate(),
-    })
+    getDashboardAnalytics()
       .then((response) => {
-        setAnalytics(response.data);
+        setDashboard(response.data);
       })
       .catch(() => {
         setErrorText("Не удалось загрузить аналитику. Проверь backend.");
@@ -58,7 +73,9 @@ export function DashboardPage() {
       });
   }, []);
 
-  function handleApplyFilters() {
+  function handleFiltersSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
     loadDashboard({
       marketplaceId: marketplaceId || undefined,
       dateFrom: dateFrom || undefined,
@@ -66,324 +83,367 @@ export function DashboardPage() {
     });
   }
 
-  function handlePeriodPreset(days: number) {
-    const nextDateFrom = getDateBefore(days);
-    const nextDateTo = getTodayIsoDate();
-
-    setDateFrom(nextDateFrom);
-    setDateTo(nextDateTo);
-
-    loadDashboard({
-      marketplaceId: marketplaceId || undefined,
-      dateFrom: nextDateFrom,
-      dateTo: nextDateTo,
-    });
-  }
-
   function handleResetFilters() {
-    const nextDateFrom = getDateBefore(30);
-    const nextDateTo = getTodayIsoDate();
-
     setMarketplaceId("");
-    setDateFrom(nextDateFrom);
-    setDateTo(nextDateTo);
-
-    loadDashboard({
-      dateFrom: nextDateFrom,
-      dateTo: nextDateTo,
-    });
-  }
-
-  if (isLoading) {
-    return <p>Загрузка dashboard...</p>;
-  }
-
-  if (errorText || !analytics) {
-    return <p className="error-text">{errorText}</p>;
+    setDateFrom("");
+    setDateTo("");
+    loadDashboard();
   }
 
   return (
     <>
-      <PageSection
-        title="Фильтры аналитики"
-        description="Смотри показатели по всем маркетплейсам или отдельно по выбранной площадке."
-      >
-        <div className="dashboard-filters">
-          <label>
-            <span>Маркетплейс</span>
-            <select
-              value={marketplaceId}
-              onChange={(event) => setMarketplaceId(event.target.value)}
-            >
-              <option value="">Все маркетплейсы</option>
-              {analytics.marketplaceOptions.map((marketplace) => (
-                <option key={marketplace.id} value={marketplace.id}>
-                  {marketplace.name} · {marketplace.type}
-                </option>
-              ))}
-            </select>
-          </label>
+      <div className="dashboard-sticky-toolbar">
+        <PageSection
+          title="Dashboard"
+          description="Главная аналитика по продажам, остаткам, отзывам и проблемным товарам."
+        >
+          <form className="dashboard-filters" onSubmit={handleFiltersSubmit}>
+            <label>
+              <span>Маркетплейс</span>
+              <select
+                value={marketplaceId}
+                onChange={(event) => setMarketplaceId(event.target.value)}
+              >
+                <option value="">Все маркетплейсы</option>
 
-          <label>
-            <span>Дата от</span>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(event) => setDateFrom(event.target.value)}
-            />
-          </label>
+                {dashboard?.marketplaceOptions.map((marketplace) => (
+                  <option key={marketplace.id} value={marketplace.id}>
+                    {marketplace.name} · {marketplace.type}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <label>
-            <span>Дата до</span>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(event) => setDateTo(event.target.value)}
-            />
-          </label>
+            <label>
+              <span>Дата от</span>
+              <input
+                value={dateFrom}
+                onChange={(event) => setDateFrom(event.target.value)}
+                type="date"
+              />
+            </label>
 
-          <div className="dashboard-filters__actions">
-            <button
-              className="primary-button"
-              onClick={handleApplyFilters}
-              type="button"
-            >
-              Применить
-            </button>
+            <label>
+              <span>Дата до</span>
+              <input
+                value={dateTo}
+                onChange={(event) => setDateTo(event.target.value)}
+                type="date"
+              />
+            </label>
 
-            <button
-              className="secondary-button"
-              onClick={handleResetFilters}
-              type="button"
-            >
-              Сбросить
-            </button>
-          </div>
-        </div>
+            <div className="dashboard-filter-actions">
+              <button className="primary-button" type="submit">
+                Применить
+              </button>
 
-        <div className="period-presets">
-          <button onClick={() => handlePeriodPreset(7)} type="button">
-            7 дней
-          </button>
-          <button onClick={() => handlePeriodPreset(30)} type="button">
-            30 дней
-          </button>
-          <button onClick={() => handlePeriodPreset(90)} type="button">
-            90 дней
-          </button>
-        </div>
-      </PageSection>
-
-      <PageSection
-        title="Что сделать сегодня"
-        description="SellerHUB подсвечивает действия, которые сильнее всего влияют на продажи."
-      >
-        <div className="action-grid">
-          {analytics.actionItems.map((item) => (
-            <article
-              className={`action-card action-card--${item.priority.toLowerCase()}`}
-              key={item.id}
-            >
-              <div className="action-card__top">
-                <span>{item.priority}</span>
-                <strong>{item.metric}</strong>
-              </div>
-
-              <h3>{item.title}</h3>
-              <p>{item.description}</p>
-              <small>{item.recommendation}</small>
-            </article>
-          ))}
-        </div>
-      </PageSection>
-
-      <PageSection
-        title="Продажные KPI"
-        description="Основные показатели, которые помогают селлеру понимать продажи, эффективность карточек и проблемы в ассортименте."
-      >
-        <div className="kpi-grid">
-          {analytics.kpiCards.map((kpi) => (
-            <article className="kpi-card" key={kpi.id}>
-              <div className="kpi-card__top">
-                <p>{kpi.label}</p>
-                <span title={`${kpi.formula}. ${kpi.interpretation}`}>?</span>
-              </div>
-
-              <strong>{kpi.value}</strong>
-              <small>{kpi.description}</small>
-
-              <details>
-                <summary>Как считается</summary>
-                <p>
-                  <b>Формула:</b> {kpi.formula}
-                </p>
-                <p>
-                  <b>Как понимать:</b> {kpi.interpretation}
-                </p>
-              </details>
-            </article>
-          ))}
-        </div>
-      </PageSection>
-
-      <PageSection
-        title="Проблемные товары"
-        description="Товары, которые требуют внимания: низкий остаток, слабый рейтинг, отзывы без ответа или низкая конверсия."
-      >
-        <div className="table-card">
-          <table>
-            <thead>
-              <tr>
-                <th>Товар</th>
-                <th>Маркетплейс</th>
-                <th>Остаток</th>
-                <th>Рейтинг</th>
-                <th>Конверсия</th>
-                <th>Проблемы</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {analytics.problemProducts.map((product) => (
-                <tr key={product.id}>
-                  <td>
-                    <strong>{product.title}</strong>
-                    <br />
-                    <span className="muted-text">{product.sku}</span>
-                  </td>
-                  <td>{product.marketplaceName}</td>
-                  <td>{product.stock}</td>
-                  <td>{product.rating ?? "—"}</td>
-                  <td>{product.conversionRate}%</td>
-                  <td>
-                    <div className="problem-tags">
-                      {product.problems.map((problem) => (
-                        <span key={problem}>{problem}</span>
-                      ))}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {analytics.problemProducts.length === 0 ? (
-            <div className="empty-state">
-              <strong>Проблемные товары не найдены</strong>
-              <p>По выбранным фильтрам критичных проблем нет.</p>
+              <button
+                className="secondary-button"
+                onClick={handleResetFilters}
+                type="button"
+              >
+                Сбросить
+              </button>
             </div>
-          ) : null}
-        </div>
-      </PageSection>
+          </form>
+        </PageSection>
+      </div>
 
-      <PageSection
-        title="Воронка продаж"
-        description="Показывает путь от просмотров до заказов, доставок, возвратов и отмен."
-      >
-        <div className="funnel-grid">
-          <div className="funnel-item">
-            <span>Просмотры</span>
-            <strong>{analytics.salesFunnel.views}</strong>
-          </div>
-          <div className="funnel-item">
-            <span>Заказы</span>
-            <strong>{analytics.salesFunnel.orders}</strong>
-          </div>
-          <div className="funnel-item">
-            <span>Доставлено</span>
-            <strong>{analytics.salesFunnel.deliveredOrders}</strong>
-          </div>
-          <div className="funnel-item">
-            <span>Возвраты</span>
-            <strong>{analytics.salesFunnel.returnedOrders}</strong>
-          </div>
-          <div className="funnel-item">
-            <span>Отмены</span>
-            <strong>{analytics.salesFunnel.cancelledOrders}</strong>
-          </div>
-        </div>
-      </PageSection>
+      {errorText ? (
+        <PageSection title="Ошибка загрузки">
+          <AlertMessage type="error">{errorText}</AlertMessage>
+        </PageSection>
+      ) : null}
 
-      <PageSection
-        title="Выручка по маркетплейсам"
-        description="Показывает, какие площадки дают больше всего денег."
-      >
-        <div className="table-card">
-          <table>
-            <thead>
-              <tr>
-                <th>Маркетплейс</th>
-                <th>Тип</th>
-                <th>Выручка</th>
-                <th>Заказы</th>
-              </tr>
-            </thead>
-            <tbody>
-              {analytics.marketplaceRevenue.map((marketplace) => (
-                <tr key={marketplace.marketplaceId}>
-                  <td>{marketplace.marketplaceName}</td>
-                  <td>{marketplace.marketplaceType}</td>
-                  <td>{marketplace.revenue} ₽</td>
-                  <td>{marketplace.ordersCount}</td>
-                </tr>
+      {isLoading ? (
+        <PageSection title="Загрузка аналитики">
+          <LoadingState title="Загружаем показатели Dashboard..." rows={6} />
+        </PageSection>
+      ) : null}
+
+      {!isLoading && dashboard ? (
+        <>
+          <PageSection
+            title="Ключевые показатели"
+            description="Основные метрики селлера. Подсказки объясняют, как считается каждый показатель."
+          >
+            <div className="dashboard-kpi-grid">
+              {dashboard.kpiCards.map((card) => (
+                <article className="dashboard-kpi-card" key={card.id}>
+                  <span>{card.label}</span>
+                  <strong>{card.value}</strong>
+                  <p>{card.description}</p>
+
+                  <details>
+                    <summary>Как считается</summary>
+                    <small>{card.formula}</small>
+                    <small>{card.interpretation}</small>
+                  </details>
+                </article>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </PageSection>
+            </div>
+          </PageSection>
 
-      <PageSection
-        title="Товары с низким остатком"
-        description="Эти товары нужно пополнить в первую очередь."
-      >
-        <div className="table-card">
-          <table>
-            <thead>
-              <tr>
-                <th>Товар</th>
-                <th>SKU</th>
-                <th>Остаток</th>
-                <th>Маркетплейс</th>
-              </tr>
-            </thead>
-            <tbody>
-              {analytics.lowStockProducts.map((product) => (
-                <tr key={product.id}>
-                  <td>{product.title}</td>
-                  <td>{product.sku}</td>
-                  <td>{product.stock}</td>
-                  <td>{product.marketplaceName}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </PageSection>
+          <section className="dashboard-grid-two">
+            <PageSection
+              title="Что требует внимания"
+              description="Автоматические подсказки по проблемам и возможностям."
+            >
+              {dashboard.actionItems.length > 0 ? (
+                <div className="dashboard-action-list">
+                  {dashboard.actionItems.map((item) => (
+                    <article className="dashboard-action-card" key={item.id}>
+                      <div>
+                        <StatusBadge tone={getPriorityTone(item.priority)}>
+                          {priorityLabels[item.priority]}
+                        </StatusBadge>
+                        <h3>{item.title}</h3>
+                      </div>
 
-      <PageSection title="Топ товаров по выручке">
-        <div className="table-card">
-          <table>
-            <thead>
-              <tr>
-                <th>Товар</th>
-                <th>Выручка</th>
-                <th>Заказы</th>
-                <th>Просмотры</th>
-              </tr>
-            </thead>
-            <tbody>
-              {analytics.topProducts.map((product) => (
-                <tr key={product.id}>
-                  <td>{product.title}</td>
-                  <td>{product.revenue} ₽</td>
-                  <td>{product.ordersCount}</td>
-                  <td>{product.views}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </PageSection>
+                      <p>{item.description}</p>
+
+                      <footer>
+                        <span>{item.metric}</span>
+                        <strong>{item.recommendation}</strong>
+                      </footer>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  title="Критичных действий нет"
+                  description="Сейчас SellerHUB не видит срочных проблем в данных."
+                />
+              )}
+            </PageSection>
+
+            <PageSection
+              title="Воронка продаж"
+              description="Путь от просмотров до заказов и проблемных статусов."
+            >
+              <div className="sales-funnel">
+                <article>
+                  <span>Просмотры</span>
+                  <strong>{dashboard.salesFunnel.views}</strong>
+                </article>
+
+                <article>
+                  <span>Заказы</span>
+                  <strong>{dashboard.salesFunnel.orders}</strong>
+                </article>
+
+                <article>
+                  <span>Доставлено</span>
+                  <strong>{dashboard.salesFunnel.deliveredOrders}</strong>
+                </article>
+
+                <article>
+                  <span>Возвраты</span>
+                  <strong>{dashboard.salesFunnel.returnedOrders}</strong>
+                </article>
+
+                <article>
+                  <span>Отмены</span>
+                  <strong>{dashboard.salesFunnel.cancelledOrders}</strong>
+                </article>
+              </div>
+            </PageSection>
+          </section>
+
+          <section className="dashboard-grid-two">
+            <PageSection
+              title="Выручка по маркетплейсам"
+              description="Где сейчас основная выручка и количество заказов."
+            >
+              {dashboard.marketplaceRevenue.length > 0 ? (
+                <div className="marketplace-revenue-list">
+                  {dashboard.marketplaceRevenue.map((marketplace) => (
+                    <article
+                      className="marketplace-revenue-card"
+                      key={marketplace.marketplaceId}
+                    >
+                      <div>
+                        <h3>{marketplace.marketplaceName}</h3>
+                        <span>{marketplace.marketplaceType}</span>
+                      </div>
+
+                      <strong>{marketplace.revenue} ₽</strong>
+                      <p>{marketplace.ordersCount} заказов</p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  title="Выручки пока нет"
+                  description="Подключи маркетплейс и запусти синхронизацию, чтобы увидеть выручку."
+                />
+              )}
+            </PageSection>
+
+            <PageSection
+              title="Товары с низким остатком"
+              description="Товары, которые могут скоро закончиться."
+            >
+              {dashboard.lowStockProducts.length > 0 ? (
+                <div className="compact-product-list">
+                  {dashboard.lowStockProducts.map((product) => (
+                    <article className="compact-product-card" key={product.id}>
+  <div>
+    <h3>{product.title}</h3>
+    <span>
+      {product.marketplaceName} · {product.sku}
+    </span>
+  </div>
+
+  <div className="dashboard-card-actions">
+    <StatusBadge
+      tone={product.stock <= 3 ? "danger" : "warning"}
+    >
+      {`${product.stock} шт.`}
+    </StatusBadge>
+
+    <button
+      className="secondary-button"
+      onClick={() => onOpenProduct(product.id)}
+      type="button"
+    >
+      Открыть
+    </button>
+  </div>
+</article>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  title="Низких остатков нет"
+                  description="Сейчас нет товаров, которые срочно требуют пополнения."
+                />
+              )}
+            </PageSection>
+          </section>
+
+          <PageSection
+            title="Проблемные товары"
+            description="Карточки, где есть признаки проблем: низкая конверсия, рейтинг, остатки или слабая динамика."
+          >
+            {dashboard.problemProducts.length > 0 ? (
+              <div className="problem-products-grid">
+                {dashboard.problemProducts.map((product) => (
+                  <article className="problem-product-card" key={product.id}>
+                    <div className="problem-product-card__header">
+                      <div>
+                        <h3>{product.title}</h3>
+                        <span>
+                          {product.marketplaceName} · {product.sku}
+                        </span>
+                      </div>
+
+                      <div className="dashboard-card-actions">
+  <StatusBadge tone="warning">
+    {`${product.problems.length} проблем`}
+  </StatusBadge>
+
+  <button
+    className="secondary-button"
+    onClick={() => onOpenProduct(product.id)}
+    type="button"
+  >
+    Открыть
+  </button>
+</div>
+                    </div>
+
+                    <div className="problem-product-card__metrics">
+                      <span>Остаток: {product.stock}</span>
+                      <span>Рейтинг: {product.rating ?? "—"}</span>
+                      <span>Просмотры: {product.views}</span>
+                      <span>Заказы: {product.ordersCount}</span>
+                      <span>Конверсия: {product.conversionRate}%</span>
+                    </div>
+
+                    <ul>
+                      {product.problems.map((problem) => (
+                        <li key={problem}>{problem}</li>
+                      ))}
+                    </ul>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                title="Проблемных товаров нет"
+                description="По текущим данным товары выглядят нормально."
+              />
+            )}
+          </PageSection>
+
+          <PageSection
+            title="Топ товаров"
+            description="Товары, которые приносят больше всего выручки и заказов."
+          >
+            {dashboard.topProducts.length > 0 ? (
+              <div className="top-products-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Товар</th>
+                      <th>Маркетплейс</th>
+                      <th>Выручка</th>
+                      <th>Заказы</th>
+                      <th>Просмотры</th>
+                      <th>Остаток</th>
+                      <th>Рейтинг</th>
+                      <th>Действия</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {dashboard.topProducts.map((product) => (
+                      <tr key={product.id}>
+                        <td>
+                          <strong>{product.title}</strong>
+                          <br />
+                          <span>{product.sku}</span>
+                        </td>
+                        <td>
+                          {product.marketplaceName}
+                          <br />
+                          <span>{product.marketplaceType}</span>
+                        </td>
+                        <td>{product.revenue} ₽</td>
+                        <td>{product.ordersCount}</td>
+                        <td>{product.views}</td>
+                        <td>
+                          <StatusBadge
+                            tone={product.stock <= 10 ? "warning" : "success"}
+                          >
+                            {product.stock}
+                          </StatusBadge>
+                        </td>
+                        <td>{product.rating ?? "—"}</td>
+                        <td>
+  <button
+    className="secondary-button"
+    onClick={() => onOpenProduct(product.id)}
+    type="button"
+  >
+    Открыть
+  </button>
+</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <EmptyState
+                title="Топ товаров пока нет"
+                description="После появления заказов здесь появится рейтинг лучших товаров."
+              />
+            )}
+          </PageSection>
+        </>
+      ) : null}
     </>
   );
 }
